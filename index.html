@@ -1,0 +1,1788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sprint Board</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f4f5f7;
+  --header-bg: #1a1a2e;
+  --col-bg: #ebecf0;
+  --card-bg: #fff;
+  --text: #172b4d;
+  --text-light: #5e6c84;
+  --accent: #0052cc;
+  --high: #ef5350;
+  --medium: #ffa726;
+  --low: #66bb6a;
+  --shadow: 0 1px 3px rgba(0,0,0,0.12);
+  --radius: 6px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.header {
+  background: var(--header-bg);
+  color: #fff;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sprint-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  color: #a0a0b8;
+}
+
+.sprint-meta span { white-space: nowrap; }
+
+.progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.progress-bar {
+  width: 160px;
+  height: 8px;
+  background: #333;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--low);
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+
+.progress-text {
+  font-size: 13px;
+  color: #a0a0b8;
+  white-space: nowrap;
+}
+
+.header-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.header-controls input[type="text"] {
+  padding: 6px 10px;
+  border: 1px solid #444;
+  border-radius: var(--radius);
+  background: #2a2a40;
+  color: #fff;
+  font-size: 13px;
+  width: 180px;
+}
+
+.header-controls input[type="text"]::placeholder { color: #777; }
+
+.btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #0065ff; }
+.btn-secondary { background: #ddd; color: var(--text); }
+.btn-secondary:hover { background: #ccc; }
+.btn-danger { background: var(--high); color: #fff; }
+.btn-danger:hover { background: #d32f2f; }
+
+/* View toggle */
+.view-toggle {
+  display: flex;
+  background: #2a2a40;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.view-toggle button {
+  padding: 6px 14px;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  color: #999;
+  transition: background 0.15s, color 0.15s;
+}
+
+.view-toggle button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #3a3a55;
+  color: #ccc;
+}
+
+/* Layout */
+.app-body {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Board */
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 16px;
+  height: 100%;
+  overflow-x: auto;
+}
+
+.board.hidden { display: none; }
+
+.column {
+  background: var(--col-bg);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+}
+
+.column-header {
+  padding: 12px 14px;
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.column-header .count {
+  background: #ccc;
+  color: #555;
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.column-body {
+  flex: 1;
+  padding: 0 8px 8px;
+  overflow-y: auto;
+  min-height: 60px;
+}
+
+.column-body.drag-over {
+  background: rgba(0, 82, 204, 0.08);
+  border-radius: 0 0 8px 8px;
+}
+
+/* Backlog view */
+.backlog-view {
+  display: none;
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px 24px 16px 60px;
+}
+
+.backlog-view.active {
+  display: block;
+}
+
+.backlog-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.btn-replan {
+  padding: 7px 16px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-replan:hover {
+  background: #0065ff;
+}
+
+.sprint-section {
+  background: var(--col-bg);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.sprint-section-header {
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sprint-section-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sprint-section-header .sprint-dates {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-left: 12px;
+}
+
+.sprint-section-header .sprint-count {
+  background: #ccc;
+  color: #555;
+  border-radius: 10px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sprint-capacity {
+  display: inline-flex;
+  gap: 10px;
+  margin-left: 14px;
+  align-items: center;
+}
+
+.sprint-member-cap {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-light);
+  font-weight: 400;
+}
+
+.sprint-member-cap .member-label {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.sprint-member-cap input {
+  width: 36px;
+  padding: 1px 4px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 11px;
+  text-align: center;
+  font-family: inherit;
+  background: #fafafa;
+}
+
+.sprint-member-cap input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #fff;
+}
+
+.sprint-section-body {
+  padding: 0 12px 12px;
+  min-height: 40px;
+}
+
+.sprint-section-body.drag-over {
+  background: rgba(0, 82, 204, 0.08);
+  border-radius: 0 0 8px 8px;
+}
+
+.card-placeholder {
+  background: rgba(0, 82, 204, 0.08);
+  border: 2px dashed rgba(0, 82, 204, 0.25);
+  border-radius: var(--radius);
+  margin-bottom: 6px;
+  transition: height 0.2s ease;
+}
+
+.card.drag-collapse {
+  height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+  border-width: 0 !important;
+  overflow: hidden;
+  opacity: 0;
+  box-shadow: none !important;
+}
+
+/* Cards */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  box-shadow: var(--shadow);
+  cursor: grab;
+  border-left: 4px solid #ccc;
+  transition: box-shadow 0.15s, transform 0.1s;
+  position: relative;
+}
+
+.card.flip-animate {
+  transition: transform 0.2s ease;
+}
+
+.card:hover:not(.flip-animate) {
+  box-shadow: 0 0 16px rgba(0,0,0,0.25);
+  transform: translateY(-1px);
+  z-index: 1;
+}
+
+.backlog-view .card:hover:not(.flip-animate):not(.dragging) {
+  box-shadow: 0 0 16px rgba(0,0,0,0.75);
+  transform: scale(1.01, 1.12);
+  transform-origin: left center;
+  transform: translateX(-100);
+}
+
+.card.dragging {
+  opacity: 0.5;
+  transform: rotate(2deg);
+}
+
+.card.priority-high { border-left-color: var(--high); }
+.card.priority-medium { border-left-color: var(--medium); }
+.card.priority-low { border-left-color: var(--low); }
+
+.backlog-view .card.status-done {
+  background: #e0e0e0;
+  transform: scale(0.98, 0.98);
+}
+
+.backlog-view .card.status-done .card-title {
+  text-decoration: line-through;
+}
+
+.card-key {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  word-break: break-word;
+}
+
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-light);
+}
+
+.card-priority {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.card-priority.high { background: #fde; color: var(--high); }
+.card-priority.medium { background: #fff3e0; color: #e65100; }
+.card-priority.low { background: #e8f5e9; color: #2e7d32; }
+
+.card-assignee {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.card-meta {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.badge-estimate {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.badge-dep {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.deps-checklist {
+  max-height: 120px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: var(--radius);
+  padding: 4px 0;
+}
+
+.deps-checklist label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.deps-checklist label:hover {
+  background: #f4f5f7;
+}
+
+.deps-checklist input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.card-deps {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+  font-size: 9px;
+  color: var(--text-light);
+}
+
+.card-deps span {
+  background: #f3e5f5;
+  color: #7b1fa2;
+  padding: 0 4px;
+  border-radius: 2px;
+  font-weight: 500;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge-sprint {
+  background: #e0f2f1;
+  color: #00695c;
+}
+
+.avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.active { display: flex; }
+
+.modal {
+  background: #fff;
+  border-radius: 10px;
+  width: 440px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 { font-size: 16px; }
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--text-light);
+  line-height: 1;
+}
+
+.modal-body { padding: 20px; }
+
+.form-group { margin-bottom: 14px; }
+
+.form-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-light);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.form-group textarea { resize: vertical; min-height: 60px; }
+
+.modal-footer {
+  padding: 14px 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Team capacity bar */
+.team-capacity {
+  display: none;
+  padding: 10px 16px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  overflow-x: auto;
+}
+
+.team-capacity.active {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.member-capacity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.member-capacity .avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+
+.member-capacity .member-name {
+  font-weight: 600;
+  min-width: 40px;
+}
+
+.member-capacity .capacity-bar {
+  width: 80px;
+  height: 6px;
+  background: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.member-capacity .capacity-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.member-capacity .capacity-fill.under { background: var(--low); }
+.member-capacity .capacity-fill.near { background: var(--medium); }
+.member-capacity .capacity-fill.over { background: var(--high); }
+
+.member-capacity .capacity-text {
+  color: var(--text-light);
+  font-size: 11px;
+  min-width: 50px;
+}
+
+.member-capacity .capacity-avail {
+  width: 36px;
+  padding: 2px 4px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 11px;
+  text-align: center;
+  font-family: inherit;
+  background: #fafafa;
+}
+
+.member-capacity .capacity-avail:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #fff;
+}
+
+/* Dependency arrows overlay */
+.dep-arrow-overlay {
+  position: fixed;
+  inset: 0;
+  width: 15%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.dep-arrow-overlay g {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.dep-arrow-overlay g.highlighted {
+  opacity: 1;
+}
+
+.dep-arrow-overlay path {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.dep-arrow-overlay .in-from-below path { stroke: #43a047; }
+.dep-arrow-overlay .in-from-below polygon { fill: #43a047; }
+.dep-arrow-overlay .in-from-above path { stroke: #ef5350; }
+.dep-arrow-overlay .in-from-above polygon { fill: #ef5350; }
+.dep-arrow-overlay .out-up path { stroke: #0052cc; }
+.dep-arrow-overlay .out-up polygon { fill: #0052cc; }
+.dep-arrow-overlay .out-down path { stroke: #ef5350; }
+.dep-arrow-overlay .out-down polygon { fill: #ef5350; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .board {
+    grid-template-columns: 1fr;
+  }
+
+  .header { gap: 12px; }
+  .header-controls input[type="text"] { width: 120px; }
+  .progress-bar { width: 100px; }
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <h1>Sprint Board</h1>
+  <div class="sprint-meta">
+    <span id="sprintName">Sprint 1</span>
+    <span id="sprintDates">Feb 15 – Feb 28, 2026</span>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progressFill"></div></div>
+    <span class="progress-text" id="progressText">0%</span>
+  </div>
+  <div class="header-controls">
+    <input type="text" id="searchInput" placeholder="Search issues...">
+    <div class="view-toggle">
+      <button id="viewBoard" class="active">Board</button>
+      <button id="viewBacklog">Backlog</button>
+    </div>
+    <button class="btn btn-primary" id="createBtn">+ Create</button>
+  </div>
+</header>
+
+<div class="team-capacity" id="teamCapacity"></div>
+
+<div class="app-body">
+  <main class="board" id="board">
+    <div class="column" data-status="todo">
+      <div class="column-header">To Do <span class="count" id="countTodo">0</span></div>
+      <div class="column-body" data-status="todo"></div>
+    </div>
+    <div class="column" data-status="inprogress">
+      <div class="column-header">In Progress <span class="count" id="countInprogress">0</span></div>
+      <div class="column-body" data-status="inprogress"></div>
+    </div>
+    <div class="column" data-status="done">
+      <div class="column-header">Done <span class="count" id="countDone">0</span></div>
+      <div class="column-body" data-status="done"></div>
+    </div>
+  </main>
+
+  <div class="backlog-view" id="backlogView"></div>
+</div>
+
+<!-- Create / Edit Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Create Issue</h2>
+      <button class="modal-close" id="modalClose">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Title *</label>
+        <input type="text" id="issueTitle" placeholder="Issue summary">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="issueDesc" placeholder="Details (optional)"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Priority</label>
+        <select id="issuePriority">
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Assignee</label>
+        <input type="text" id="issueAssignee" placeholder="Name (optional)">
+      </div>
+      <div class="form-group">
+        <label>Estimate (hours)</label>
+        <input type="number" id="issueEstimate" min="0" step="0.5" value="0" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>Depends On</label>
+        <div id="issueDependsOn" class="deps-checklist"></div>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="issueStatus">
+          <option value="todo">To Do</option>
+          <option value="inprogress">In Progress</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Sprint</label>
+        <input type="number" id="issueSprint" min="1" step="1" value="1">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="deleteBtn" style="display:none;margin-right:auto;">Delete</button>
+      <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="saveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<svg class="dep-arrow-overlay" id="depArrowOverlay" width="100%" height="100%"></svg>
+<script src="/replan.js"></script>
+<script>
+(function() {
+  // --- State ---
+  let state = { nextId: 1, projectKey: 'SB', sprintStart: '2026-02-15', issues: [] };
+  let currentView = 'board'; // 'board' or 'backlog'
+
+  async function loadState() {
+    try {
+      const res = await fetch('/api/tasks');
+      const data = await res.json();
+      if (data && Array.isArray(data.issues)) {
+        state = data;
+        if (!state.sprintStart) state.sprintStart = '2026-02-15';
+        if (!state.teamCapacity) state.teamCapacity = {};
+        // Migrate old flat teamCapacity { name: number } to per-sprint { name: { sprint: number } }
+        Object.keys(state.teamCapacity).forEach(function(name) {
+          if (typeof state.teamCapacity[name] === 'number') {
+            state.teamCapacity[name] = { 1: state.teamCapacity[name] };
+          }
+        });
+      }
+    } catch(e) {
+      console.error('Failed to load state:', e);
+    }
+  }
+
+  async function saveState() {
+    try {
+      await fetch('/api/tasks', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state)
+      });
+    } catch(e) {
+      console.error('Failed to save state:', e);
+    }
+  }
+
+  // --- Sprint date helpers ---
+  function getSprintDateRange(sprintNum) {
+    const start = new Date(state.sprintStart + 'T00:00:00');
+    const sprintStart = new Date(start);
+    sprintStart.setDate(sprintStart.getDate() + (sprintNum - 1) * 14);
+    const sprintEnd = new Date(sprintStart);
+    sprintEnd.setDate(sprintEnd.getDate() + 13);
+    return { start: sprintStart, end: sprintEnd };
+  }
+
+  function formatDate(d) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[d.getMonth()] + ' ' + d.getDate();
+  }
+
+  function formatDateRange(sprintNum) {
+    const { start, end } = getSprintDateRange(sprintNum);
+    const startYear = start.getFullYear();
+    const endYear = end.getFullYear();
+    if (startYear === endYear) {
+      return formatDate(start) + ' \u2013 ' + formatDate(end) + ', ' + endYear;
+    }
+    return formatDate(start) + ', ' + startYear + ' \u2013 ' + formatDate(end) + ', ' + endYear;
+  }
+
+  // --- DOM refs ---
+  const board = document.getElementById('board');
+  const backlogView = document.getElementById('backlogView');
+  const teamCapacityEl = document.getElementById('teamCapacity');
+  const viewBoardBtn = document.getElementById('viewBoard');
+  const viewBacklogBtn = document.getElementById('viewBacklog');
+  const createBtn = document.getElementById('createBtn');
+  const searchInput = document.getElementById('searchInput');
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalClose = document.getElementById('modalClose');
+  const saveBtn = document.getElementById('saveBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const deleteBtn = document.getElementById('deleteBtn');
+  const issueTitle = document.getElementById('issueTitle');
+  const issueDesc = document.getElementById('issueDesc');
+  const issuePriority = document.getElementById('issuePriority');
+  const issueAssignee = document.getElementById('issueAssignee');
+  const issueEstimate = document.getElementById('issueEstimate');
+  const issueDependsOn = document.getElementById('issueDependsOn');
+  const issueStatus = document.getElementById('issueStatus');
+  const issueSprint = document.getElementById('issueSprint');
+  const progressFill = document.getElementById('progressFill');
+  const progressText = document.getElementById('progressText');
+  const sprintNameEl = document.getElementById('sprintName');
+  const sprintDatesEl = document.getElementById('sprintDates');
+
+  let editingId = null;
+
+  // --- View toggle ---
+  function setView(view) {
+    currentView = view;
+    if (view === 'board') {
+      board.classList.remove('hidden');
+      backlogView.classList.remove('active');
+      teamCapacityEl.classList.add('active');
+      viewBoardBtn.classList.add('active');
+      viewBacklogBtn.classList.remove('active');
+    } else {
+      board.classList.add('hidden');
+      backlogView.classList.add('active');
+      teamCapacityEl.classList.remove('active');
+      viewBoardBtn.classList.remove('active');
+      viewBacklogBtn.classList.add('active');
+    }
+    render();
+  }
+
+  // --- Render ---
+  function render() {
+    if (currentView === 'board') {
+      renderBoard();
+    } else {
+      renderBacklog();
+    }
+  }
+
+  function renderBoard() {
+    depArrowOverlay.innerHTML = '';
+    const filter = searchInput.value.toLowerCase().trim();
+
+    const columns = board.querySelectorAll('.column-body');
+    columns.forEach(col => { col.innerHTML = ''; });
+
+    const sprint1Issues = state.issues.filter(i => (i.sprint || 1) === 1);
+    const counts = { todo: 0, inprogress: 0, done: 0 };
+
+    sprint1Issues.forEach(issue => {
+      counts[issue.status] = (counts[issue.status] || 0) + 1;
+
+      if (filter) {
+        const haystack = (issue.title + ' ' + issue.key + ' ' + (issue.assignee || '')).toLowerCase();
+        if (!haystack.includes(filter)) return;
+      }
+
+      const card = createCard(issue);
+      const col = board.querySelector('.column-body[data-status="' + issue.status + '"]');
+      if (col) col.appendChild(card);
+    });
+
+    document.getElementById('countTodo').textContent = counts.todo;
+    document.getElementById('countInprogress').textContent = counts.inprogress;
+    document.getElementById('countDone').textContent = counts.done;
+
+    // Progress for sprint 1
+    const boardTotal = counts.todo + counts.inprogress + counts.done;
+    const pct = boardTotal > 0 ? Math.round((counts.done / boardTotal) * 100) : 0;
+    progressFill.style.width = pct + '%';
+    progressText.textContent = pct + '%';
+
+    // Header sprint info
+    sprintNameEl.textContent = 'Sprint 1';
+    sprintDatesEl.textContent = formatDateRange(1);
+
+    renderTeamCapacity(sprint1Issues);
+  }
+
+  function getMemberCapacity(name, sprint) {
+    if (!state.teamCapacity) state.teamCapacity = {};
+    if (!state.teamCapacity[name]) state.teamCapacity[name] = {};
+    return state.teamCapacity[name][sprint] != null ? state.teamCapacity[name][sprint] : 80;
+  }
+
+  function setMemberCapacity(name, sprint, value) {
+    if (!state.teamCapacity) state.teamCapacity = {};
+    if (!state.teamCapacity[name]) state.teamCapacity[name] = {};
+    state.teamCapacity[name][sprint] = value;
+  }
+
+  function renderTeamCapacity(sprintIssues) {
+    teamCapacityEl.innerHTML = '';
+
+    // Collect unique assignees from all issues (not just this sprint)
+    var members = new Set();
+    state.issues.forEach(function(i) { if (i.assignee) members.add(i.assignee); });
+    var sorted = Array.from(members).sort();
+
+    // Sum assigned hours per member for this sprint
+    var assigned = {};
+    sprintIssues.forEach(function(i) {
+      if (i.assignee && i.estimateHours) {
+        assigned[i.assignee] = (assigned[i.assignee] || 0) + i.estimateHours;
+      }
+    });
+
+    sorted.forEach(function(name) {
+      var hrs = assigned[name] || 0;
+      var avail = getMemberCapacity(name, 1);
+
+      var pct = avail > 0 ? Math.min((hrs / avail) * 100, 100) : (hrs > 0 ? 100 : 0);
+      var fillClass = pct <= 70 ? 'under' : pct <= 95 ? 'near' : 'over';
+
+      var initials = name.split(' ').map(function(w) { return w[0]; }).join('').toUpperCase().slice(0, 2);
+
+      var el = document.createElement('div');
+      el.className = 'member-capacity';
+      el.innerHTML =
+        '<span class="avatar">' + initials + '</span>' +
+        '<span class="member-name">' + escapeHtml(name) + '</span>' +
+        '<div class="capacity-bar"><div class="capacity-fill ' + fillClass + '" style="width:' + pct + '%"></div></div>' +
+        '<span class="capacity-text">' + hrs + 'h /</span>' +
+        '<input type="number" class="capacity-avail" value="' + avail + '" min="0" step="1" title="Available hours for ' + escapeHtml(name) + '">' +
+        '<span class="capacity-text">h</span>';
+
+      var input = el.querySelector('.capacity-avail');
+      input.addEventListener('change', function() {
+        var val = parseInt(input.value, 10);
+        if (isNaN(val) || val < 0) val = 0;
+        input.value = val;
+        setMemberCapacity(name, 1, val);
+        saveState();
+        renderBoard();
+      });
+      // Prevent card-like drag on the input
+      input.addEventListener('click', function(e) { e.stopPropagation(); });
+
+      teamCapacityEl.appendChild(el);
+    });
+  }
+
+  function handleReplan() {
+    state.issues = Replan.replan(state.issues, state.teamCapacity || {});
+    saveState();
+    renderBacklog();
+  }
+
+  function renderBacklog() {
+    const filter = searchInput.value.toLowerCase().trim();
+    backlogView.innerHTML = '';
+
+    // Toolbar with Re-plan button
+    var toolbar = document.createElement('div');
+    toolbar.className = 'backlog-toolbar';
+    var replanBtn = document.createElement('button');
+    replanBtn.className = 'btn-replan';
+    replanBtn.textContent = 'Re-plan';
+    replanBtn.addEventListener('click', handleReplan);
+    toolbar.appendChild(replanBtn);
+    backlogView.appendChild(toolbar);
+
+    // Collect all sprint numbers
+    const sprintNums = new Set();
+    state.issues.forEach(i => sprintNums.add(i.sprint || 1));
+    const sorted = [...sprintNums].sort((a, b) => a - b);
+
+    sorted.forEach(sprintNum => {
+      const sprintIssues = state.issues.filter(i => (i.sprint || 1) === sprintNum);
+
+      const section = document.createElement('div');
+      section.className = 'sprint-section';
+
+      const filteredIssues = filter
+        ? sprintIssues.filter(i => {
+            const haystack = (i.title + ' ' + i.key + ' ' + (i.assignee || '')).toLowerCase();
+            return haystack.includes(filter);
+          })
+        : sprintIssues;
+
+      const header = document.createElement('div');
+      header.className = 'sprint-section-header';
+
+      var headerLeft = document.createElement('div');
+      headerLeft.innerHTML = '<h3 style="display:inline">Sprint ' + sprintNum + '</h3>' +
+        '<span class="sprint-dates">' + formatDateRange(sprintNum) + '</span>';
+
+      // Capacity inputs per member for this sprint
+      var allMembers = new Set();
+      state.issues.forEach(function(i) { if (i.assignee) allMembers.add(i.assignee); });
+      var sortedMembers = Array.from(allMembers).sort();
+
+      if (sortedMembers.length > 0) {
+        var assignedHrs = {};
+        sprintIssues.forEach(function(i) {
+          if (i.assignee && i.estimateHours) {
+            assignedHrs[i.assignee] = (assignedHrs[i.assignee] || 0) + i.estimateHours;
+          }
+        });
+
+        var capContainer = document.createElement('span');
+        capContainer.className = 'sprint-capacity';
+
+        sortedMembers.forEach(function(name) {
+          var hrs = assignedHrs[name] || 0;
+          var avail = getMemberCapacity(name, sprintNum);
+
+          var memberCap = document.createElement('span');
+          memberCap.className = 'sprint-member-cap';
+
+          var label = document.createElement('span');
+          label.className = 'member-label';
+          label.textContent = name + ':';
+
+          var capInput = document.createElement('input');
+          capInput.type = 'number';
+          capInput.value = avail;
+          capInput.min = '0';
+          capInput.step = '1';
+          capInput.title = 'Available hours for ' + name + ' in Sprint ' + sprintNum;
+          capInput.addEventListener('click', function(e) { e.stopPropagation(); });
+          capInput.addEventListener('change', function() {
+            var val = parseInt(capInput.value, 10);
+            if (isNaN(val) || val < 0) val = 0;
+            capInput.value = val;
+            setMemberCapacity(name, sprintNum, val);
+            saveState();
+            renderBacklog();
+          });
+
+          memberCap.appendChild(label);
+          memberCap.appendChild(document.createTextNode(' ' + hrs + '/'));
+          memberCap.appendChild(capInput);
+          memberCap.appendChild(document.createTextNode('h'));
+
+          capContainer.appendChild(memberCap);
+        });
+
+        headerLeft.appendChild(capContainer);
+      }
+
+      var headerRight = document.createElement('span');
+      headerRight.className = 'sprint-count';
+      headerRight.textContent = sprintIssues.length + ' task' + (sprintIssues.length !== 1 ? 's' : '');
+
+      header.appendChild(headerLeft);
+      header.appendChild(headerRight);
+
+      const body = document.createElement('div');
+      body.className = 'sprint-section-body';
+      body.dataset.sprint = sprintNum;
+
+      filteredIssues.forEach(issue => {
+        const card = createCard(issue, true);
+        body.appendChild(card);
+      });
+
+      section.appendChild(header);
+      section.appendChild(body);
+      backlogView.appendChild(section);
+    });
+
+    setupBacklogDropZones();
+    renderAllDepArrows();
+  }
+
+  function createCard(issue, showStatus) {
+    const card = document.createElement('div');
+    card.className = 'card priority-' + issue.priority + (issue.status === 'done' ? ' status-done' : '');
+    card.draggable = true;
+    card.dataset.id = issue.id;
+
+    const initials = issue.assignee
+      ? issue.assignee.split(' ').map(function(w) { return w[0]; }).join('').toUpperCase().slice(0, 2)
+      : '';
+
+    var deps = issue.dependsOn || [];
+    if (!Array.isArray(deps)) deps = deps ? [deps] : [];
+    var depIssues = deps.map(function(depId) {
+      return state.issues.find(function(i) { return i.id === depId; });
+    }).filter(Boolean);
+
+    var metaHtml = '';
+    var hasMeta = (issue.estimateHours && issue.estimateHours > 0) || depIssues.length > 0 || showStatus;
+    if (hasMeta) {
+      metaHtml = '<div class="card-meta">';
+      if (issue.estimateHours && issue.estimateHours > 0) {
+        metaHtml += '<span class="badge badge-estimate">' + issue.estimateHours + 'h</span>';
+      }
+      if (depIssues.length > 0) {
+        metaHtml += '<span class="badge badge-dep">blocked by ' + depIssues.map(function(d) { return d.key; }).join(', ') + '</span>';
+      }
+      if (showStatus) {
+        var statusLabel = issue.status === 'inprogress' ? 'In Progress' : issue.status === 'todo' ? 'To Do' : 'Done';
+        metaHtml += '<span class="badge badge-sprint">' + statusLabel + '</span>';
+      }
+      metaHtml += '</div>';
+    }
+
+    // Dependency name hints for backlog view
+    var depsHintHtml = '';
+    if (showStatus && depIssues.length > 0) {
+      depsHintHtml = '<div class="card-deps">';
+      depIssues.forEach(function(d) {
+        var name = d.title.length > 10 ? d.title.substring(0, 10) + '\u2026' : d.title;
+        depsHintHtml += '<span title="' + escapeHtml(d.key + ' \u2013 ' + d.title) + '">' + escapeHtml(name) + '</span>';
+      });
+      depsHintHtml += '</div>';
+    }
+
+    card.innerHTML =
+      '<div class="card-key">' + issue.key + '</div>' +
+      '<div class="card-title">' + escapeHtml(issue.title) + '</div>' +
+      depsHintHtml +
+      metaHtml +
+      '<div class="card-footer">' +
+        '<span class="card-priority ' + issue.priority + '">' + issue.priority + '</span>' +
+        (issue.assignee
+          ? '<span class="card-assignee"><span class="avatar">' + initials + '</span>' + escapeHtml(issue.assignee) + '</span>'
+          : '') +
+      '</div>';
+
+    // Drag events
+    card.addEventListener('dragstart', function(e) {
+      card.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', issue.id);
+      e.dataTransfer.effectAllowed = 'move';
+      if (currentView === 'backlog') {
+        dragCardHeight = card.getBoundingClientRect().height;
+        setTimeout(function() {
+          var oldPos = snapshotCardPositions();
+          card.classList.add('drag-collapse');
+          animateFlip(oldPos);
+        }, 0);
+      }
+    });
+
+    card.addEventListener('dragend', function() {
+      card.classList.remove('dragging');
+      card.classList.remove('drag-collapse');
+      cleanupPlaceholder();
+      if (currentView === 'backlog') {
+        renderBacklog();
+      }
+    });
+
+    // Highlight dependency arrows on hover (backlog view)
+    if (showStatus) {
+      card.addEventListener('mouseenter', function() { highlightDepArrows(issue.id); });
+      card.addEventListener('mouseleave', function() { unhighlightDepArrows(); });
+    }
+
+    // Click to edit
+    card.addEventListener('click', function() { openEditModal(issue.id); });
+
+    return card;
+  }
+
+  // --- Drag & Drop on board columns ---
+  function setupDropZones() {
+    var zones = board.querySelectorAll('.column-body');
+
+    zones.forEach(function(zone) {
+      zone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        zone.classList.add('drag-over');
+      });
+
+      zone.addEventListener('dragleave', function(e) {
+        if (!zone.contains(e.relatedTarget)) {
+          zone.classList.remove('drag-over');
+        }
+      });
+
+      zone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        var id = parseInt(e.dataTransfer.getData('text/plain'), 10);
+        var newStatus = zone.dataset.status;
+        var issue = state.issues.find(function(i) { return i.id === id; });
+        if (issue && newStatus) {
+          issue.status = newStatus;
+          saveState();
+          render();
+        }
+      });
+    });
+  }
+
+  // --- FLIP animation for backlog reorder ---
+  var placeholder = null;
+  var currentPreviewZone = null;
+  var currentPreviewIndex = -1;
+  var dragCardHeight = 60;
+  var placeholderCleanupTimer = null;
+
+  function snapshotCardPositions() {
+    var positions = {};
+    backlogView.querySelectorAll('.card:not(.drag-collapse)').forEach(function(card) {
+      var id = card.dataset.id;
+      var rect = card.getBoundingClientRect();
+      positions[id] = { top: rect.top, left: rect.left };
+    });
+    return positions;
+  }
+
+  function cancelOngoingFlips() {
+    backlogView.querySelectorAll('.card.flip-animate').forEach(function(card) {
+      card.classList.remove('flip-animate');
+      card.style.transform = '';
+      card.style.transition = '';
+    });
+  }
+
+  function animateFlip(oldPositions) {
+    var cards = backlogView.querySelectorAll('.card:not(.drag-collapse)');
+    cards.forEach(function(card) {
+      var id = card.dataset.id;
+      var oldPos = oldPositions[id];
+      if (!oldPos) return;
+      var newRect = card.getBoundingClientRect();
+      var dx = oldPos.left - newRect.left;
+      var dy = oldPos.top - newRect.top;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+      card.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+      card.style.transition = 'none';
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          card.classList.add('flip-animate');
+          card.style.transform = '';
+          card.style.transition = '';
+          function onEnd() {
+            card.classList.remove('flip-animate');
+            card.removeEventListener('transitionend', onEnd);
+          }
+          card.addEventListener('transitionend', onEnd);
+        });
+      });
+    });
+  }
+
+  function cleanupPlaceholder() {
+    if (placeholderCleanupTimer) {
+      clearTimeout(placeholderCleanupTimer);
+      placeholderCleanupTimer = null;
+    }
+    if (placeholder && placeholder.parentNode) {
+      placeholder.parentNode.removeChild(placeholder);
+    }
+    placeholder = null;
+    currentPreviewZone = null;
+    currentPreviewIndex = -1;
+  }
+
+  // --- Drag & Drop on backlog sprint sections (with reorder) ---
+  function getDropTarget(zone, y) {
+    var cards = Array.from(zone.querySelectorAll('.card:not(.dragging):not(.drag-collapse)'));
+    for (var i = 0; i < cards.length; i++) {
+      var rect = cards[i].getBoundingClientRect();
+      var mid = rect.top + rect.height / 2;
+      if (y < mid) {
+        return { index: i };
+      }
+    }
+    return { index: cards.length };
+  }
+
+  function setupBacklogDropZones() {
+    var zones = backlogView.querySelectorAll('.sprint-section-body');
+
+    zones.forEach(function(zone) {
+      zone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        if (placeholderCleanupTimer) {
+          clearTimeout(placeholderCleanupTimer);
+          placeholderCleanupTimer = null;
+        }
+
+        var target = getDropTarget(zone, e.clientY);
+
+        // Skip if position hasn't changed
+        if (zone === currentPreviewZone && target.index === currentPreviewIndex) return;
+
+        cancelOngoingFlips();
+        var oldPos = snapshotCardPositions();
+
+        // Remove placeholder from old location
+        if (placeholder && placeholder.parentNode) {
+          placeholder.parentNode.removeChild(placeholder);
+        }
+
+        // Create placeholder if needed
+        if (!placeholder) {
+          placeholder = document.createElement('div');
+          placeholder.className = 'card-placeholder';
+        }
+        placeholder.style.height = dragCardHeight + 'px';
+
+        // Insert at target position
+        var cards = Array.from(zone.querySelectorAll('.card:not(.dragging):not(.drag-collapse)'));
+        if (target.index < cards.length) {
+          zone.insertBefore(placeholder, cards[target.index]);
+        } else {
+          zone.appendChild(placeholder);
+        }
+
+        currentPreviewZone = zone;
+        currentPreviewIndex = target.index;
+
+        animateFlip(oldPos);
+      });
+
+      zone.addEventListener('dragleave', function(e) {
+        if (!zone.contains(e.relatedTarget)) {
+          // Delay cleanup so moving between zones doesn't flash
+          placeholderCleanupTimer = setTimeout(function() {
+            cancelOngoingFlips();
+            var oldPos = snapshotCardPositions();
+            cleanupPlaceholder();
+            animateFlip(oldPos);
+          }, 50);
+        }
+      });
+
+      zone.addEventListener('drop', function(e) {
+        e.preventDefault();
+
+        var draggedId = parseInt(e.dataTransfer.getData('text/plain'), 10);
+        var newSprint = parseInt(zone.dataset.sprint, 10);
+        var issue = state.issues.find(function(i) { return i.id === draggedId; });
+        if (!issue || !newSprint) return;
+
+        // Snapshot with placeholder in place — use placeholder rect for the dropped card
+        var oldPositions = snapshotCardPositions();
+        if (placeholder) {
+          var phRect = placeholder.getBoundingClientRect();
+          oldPositions[String(draggedId)] = { top: phRect.top, left: phRect.left };
+        }
+
+        // Remove from current position
+        var oldIndex = state.issues.indexOf(issue);
+        state.issues.splice(oldIndex, 1);
+
+        // Update sprint
+        issue.sprint = newSprint;
+
+        // Determine the reference card at drop index among visible cards in this sprint
+        var visibleInSprint = state.issues.filter(function(i) { return i.sprint === newSprint; });
+        var dropIndex = currentPreviewIndex;
+
+        if (visibleInSprint.length === 0) {
+          // Empty sprint — find insertion point after previous sprint's issues
+          var insertAt = 0;
+          for (var s = newSprint - 1; s >= 1; s--) {
+            for (var j = state.issues.length - 1; j >= 0; j--) {
+              if (state.issues[j].sprint === s) {
+                insertAt = j + 1;
+                s = 0;
+                break;
+              }
+            }
+          }
+          state.issues.splice(insertAt, 0, issue);
+        } else if (dropIndex >= visibleInSprint.length) {
+          var lastInSprint = visibleInSprint[visibleInSprint.length - 1];
+          var globalIdx = state.issues.indexOf(lastInSprint);
+          state.issues.splice(globalIdx + 1, 0, issue);
+        } else {
+          var refIssue = visibleInSprint[dropIndex];
+          var globalIdx = state.issues.indexOf(refIssue);
+          state.issues.splice(globalIdx, 0, issue);
+        }
+
+        cleanupPlaceholder();
+        saveState();
+        renderBacklog();
+        animateFlip(oldPositions);
+      });
+    });
+  }
+
+  // --- Populate depends-on checkboxes ---
+  function populateDependsOn(excludeId, selectedIds) {
+    issueDependsOn.innerHTML = '';
+    var sel = selectedIds || [];
+    state.issues.forEach(function(issue) {
+      if (issue.id !== excludeId) {
+        var lbl = document.createElement('label');
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = issue.id;
+        if (sel.indexOf(issue.id) !== -1) cb.checked = true;
+        lbl.appendChild(cb);
+        lbl.appendChild(document.createTextNode(' ' + issue.key + ' \u2013 ' + issue.title));
+        issueDependsOn.appendChild(lbl);
+      }
+    });
+  }
+
+  function getSelectedDeps() {
+    var deps = [];
+    issueDependsOn.querySelectorAll('input[type="checkbox"]:checked').forEach(function(cb) {
+      deps.push(parseInt(cb.value, 10));
+    });
+    return deps;
+  }
+
+  // --- Modal ---
+  function openCreateModal() {
+    editingId = null;
+    modalTitle.textContent = 'Create Issue';
+    issueTitle.value = '';
+    issueDesc.value = '';
+    issuePriority.value = 'medium';
+    issueAssignee.value = '';
+    issueEstimate.value = '0';
+    populateDependsOn(null, []);
+    issueStatus.value = 'todo';
+    issueSprint.value = '1';
+    deleteBtn.style.display = 'none';
+    saveBtn.textContent = 'Create';
+    modalOverlay.classList.add('active');
+    issueTitle.focus();
+  }
+
+  function openEditModal(id) {
+    var issue = state.issues.find(function(i) { return i.id === id; });
+    if (!issue) return;
+    editingId = id;
+    modalTitle.textContent = 'Edit ' + issue.key;
+    issueTitle.value = issue.title;
+    issueDesc.value = issue.description || '';
+    issuePriority.value = issue.priority;
+    issueAssignee.value = issue.assignee || '';
+    issueEstimate.value = issue.estimateHours || 0;
+    var deps = issue.dependsOn || [];
+    if (!Array.isArray(deps)) deps = deps ? [deps] : [];
+    populateDependsOn(id, deps);
+    issueStatus.value = issue.status;
+    issueSprint.value = issue.sprint || 1;
+    deleteBtn.style.display = 'inline-block';
+    saveBtn.textContent = 'Update';
+    modalOverlay.classList.add('active');
+    issueTitle.focus();
+  }
+
+  function closeModal() {
+    modalOverlay.classList.remove('active');
+    editingId = null;
+  }
+
+  function handleSave() {
+    var title = issueTitle.value.trim();
+    if (!title) {
+      issueTitle.style.borderColor = 'var(--high)';
+      issueTitle.focus();
+      return;
+    }
+    issueTitle.style.borderColor = '';
+
+    var estimate = parseFloat(issueEstimate.value) || 0;
+    var deps = getSelectedDeps();
+    var sprint = parseInt(issueSprint.value, 10) || 1;
+
+    if (editingId !== null) {
+      var issue = state.issues.find(function(i) { return i.id === editingId; });
+      if (issue) {
+        issue.title = title;
+        issue.description = issueDesc.value.trim();
+        issue.priority = issuePriority.value;
+        issue.assignee = issueAssignee.value.trim();
+        issue.estimateHours = estimate;
+        issue.dependsOn = deps;
+        issue.status = issueStatus.value;
+        issue.sprint = sprint;
+      }
+    } else {
+      state.issues.push({
+        id: state.nextId,
+        key: state.projectKey + '-' + state.nextId,
+        title: title,
+        description: issueDesc.value.trim(),
+        estimateHours: estimate,
+        dependsOn: deps,
+        priority: issuePriority.value,
+        assignee: issueAssignee.value.trim(),
+        status: issueStatus.value,
+        sprint: sprint
+      });
+      state.nextId++;
+    }
+
+    saveState();
+    closeModal();
+    render();
+  }
+
+  function handleDelete() {
+    if (editingId === null) return;
+    state.issues.forEach(function(i) {
+      if (Array.isArray(i.dependsOn)) {
+        i.dependsOn = i.dependsOn.filter(function(d) { return d !== editingId; });
+      }
+    });
+    state.issues = state.issues.filter(function(i) { return i.id !== editingId; });
+    saveState();
+    closeModal();
+    render();
+  }
+
+  // --- Helpers ---
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // --- Dependency arrow drawing ---
+  var depArrowOverlay = document.getElementById('depArrowOverlay');
+
+  function drawArrowForIssue(issue) {
+    var deps = issue.dependsOn || [];
+    if (!Array.isArray(deps)) deps = deps ? [deps] : [];
+    if (deps.length === 0) return;
+
+    var sourceCard = backlogView.querySelector('.card[data-id="' + issue.id + '"]');
+    if (!sourceCard) return;
+
+    deps.forEach(function(depId) {
+      var targetCard = backlogView.querySelector('.card[data-id="' + depId + '"]');
+      if (!targetCard) return;
+
+      var srcRect = sourceCard.getBoundingClientRect();
+      var tgtRect = targetCard.getBoundingClientRect();
+
+      var sx = srcRect.left;
+      var tx = tgtRect.left;
+
+      // Determine direction from card centers
+      var srcMidY = srcRect.top + srcRect.height / 2;
+      var tgtMidY = tgtRect.top + tgtRect.height / 2;
+      var goesUp = tgtMidY < srcMidY;
+
+      // Upward: start at 33% from top, end at 33% from bottom (67% from top)
+      // Downward: start at 33% from bottom (67% from top), end at 33% from top
+      var sy, ty;
+      if (goesUp) {
+        sy = srcRect.top + srcRect.height * 0.33;
+        ty = tgtRect.top + tgtRect.height * 0.67;
+      } else {
+        sy = srcRect.top + srcRect.height * 0.67;
+        ty = tgtRect.top + tgtRect.height * 0.33;
+      }
+
+      var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.dataset.issueId = issue.id;
+      g.dataset.targetId = depId;
+      // source below target: incoming from below (green), outgoing goes up (blue)
+      // source above target: incoming from above (yellow), outgoing goes down (red)
+      g.dataset.inClass = sy > ty ? 'in-from-below' : 'in-from-above';
+      g.dataset.outClass = sy > ty ? 'out-up' : 'out-down';
+
+      // Blocky right-angle path with tight rounded corners
+      // Downward arrows extend 5vw further left for visual distinction
+      var offset = ty > sy ? 25 + window.innerWidth * 0.005 : 25;
+      var r = 6;
+      var mx = Math.min(sx, tx) - offset;
+      var dy = Math.abs(ty - sy);
+      var cr = Math.min(r, dy / 2, offset);
+
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      if (ty < sy) {
+        path.setAttribute('d',
+          'M ' + sx + ' ' + sy +
+          ' L ' + (mx + cr) + ' ' + sy +
+          ' Q ' + mx + ' ' + sy + ' ' + mx + ' ' + (sy - cr) +
+          ' L ' + mx + ' ' + (ty + cr) +
+          ' Q ' + mx + ' ' + ty + ' ' + (mx + cr) + ' ' + ty +
+          ' L ' + tx + ' ' + ty
+        );
+      } else {
+        path.setAttribute('d',
+          'M ' + sx + ' ' + sy +
+          ' L ' + (mx + cr) + ' ' + sy +
+          ' Q ' + mx + ' ' + sy + ' ' + mx + ' ' + (sy + cr) +
+          ' L ' + mx + ' ' + (ty - cr) +
+          ' Q ' + mx + ' ' + ty + ' ' + (mx + cr) + ' ' + ty +
+          ' L ' + tx + ' ' + ty
+        );
+      }
+      g.appendChild(path);
+
+      var arrowSize = 7;
+      var angle = 0;
+      var p1x = tx - arrowSize * Math.cos(angle - 0.4);
+      var p1y = ty - arrowSize * Math.sin(angle - 0.4);
+      var p2x = tx - arrowSize * Math.cos(angle + 0.4);
+      var p2y = ty - arrowSize * Math.sin(angle + 0.4);
+
+      var arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      arrow.setAttribute('points', tx + ',' + ty + ' ' + p1x + ',' + p1y + ' ' + p2x + ',' + p2y);
+      g.appendChild(arrow);
+
+      depArrowOverlay.appendChild(g);
+    });
+  }
+
+  function renderAllDepArrows() {
+    depArrowOverlay.innerHTML = '';
+    if (currentView !== 'backlog') return;
+    state.issues.forEach(function(issue) {
+      drawArrowForIssue(issue);
+    });
+  }
+
+  function highlightDepArrows(issueId) {
+    var id = String(issueId);
+    depArrowOverlay.querySelectorAll('g').forEach(function(g) {
+      if (g.dataset.targetId === id) {
+        g.classList.add('highlighted', g.dataset.inClass);
+      } else if (g.dataset.issueId === id) {
+        g.classList.add('highlighted', g.dataset.outClass);
+      }
+    });
+  }
+
+  function unhighlightDepArrows() {
+    depArrowOverlay.querySelectorAll('g.highlighted').forEach(function(g) {
+      g.classList.remove('highlighted', 'in-from-below', 'in-from-above', 'out-up', 'out-down');
+    });
+  }
+
+  // --- Event listeners ---
+  createBtn.addEventListener('click', openCreateModal);
+  modalClose.addEventListener('click', closeModal);
+  cancelBtn.addEventListener('click', closeModal);
+  saveBtn.addEventListener('click', handleSave);
+  deleteBtn.addEventListener('click', handleDelete);
+
+  modalOverlay.addEventListener('click', function(e) {
+    if (e.target === modalOverlay) closeModal();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  viewBoardBtn.addEventListener('click', function() { setView('board'); });
+  viewBacklogBtn.addEventListener('click', function() { setView('backlog'); });
+
+  searchInput.addEventListener('input', render);
+
+  // Redraw arrows on scroll since they use fixed viewport coordinates
+  backlogView.addEventListener('scroll', function() {
+    if (currentView === 'backlog') renderAllDepArrows();
+  });
+
+  // --- Init ---
+  setupDropZones();
+  teamCapacityEl.classList.add('active');
+  loadState().then(function() { render(); });
+})();
+</script>
+</body>
+</html>
