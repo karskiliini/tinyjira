@@ -546,8 +546,23 @@ body {
   width: 440px;
   max-width: 95vw;
   max-height: 90vh;
+  min-width: 320px;
+  min-height: 300px;
   overflow-y: auto;
   box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  position: relative;
+}
+
+.modal-resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 50%, #ccc 50%, #ccc 60%, transparent 60%, transparent 70%, #ccc 70%, #ccc 80%, transparent 80%);
+  border-radius: 0 0 10px 0;
+  z-index: 10;
 }
 
 .modal-header {
@@ -750,8 +765,8 @@ body {
   <div class="header-controls">
     <input type="text" id="searchInput" placeholder="Search issues...">
     <div class="view-toggle">
-      <button id="viewBoard" class="active">Board</button>
       <button id="viewBacklog">Backlog</button>
+      <button id="viewBoard" class="active">Board</button>
     </div>
     <button class="btn btn-primary" id="createBtn">+ Create</button>
   </div>
@@ -780,7 +795,8 @@ body {
 
 <!-- Create / Edit Modal -->
 <div class="modal-overlay" id="modalOverlay">
-  <div class="modal">
+  <div class="modal" id="modalDialog">
+    <div class="modal-resize-handle" id="modalResizeHandle"></div>
     <div class="modal-header">
       <h2 id="modalTitle">Create Issue</h2>
       <button class="modal-close" id="modalClose">&times;</button>
@@ -909,8 +925,40 @@ body {
   const createBtn = document.getElementById('createBtn');
   const searchInput = document.getElementById('searchInput');
   const modalOverlay = document.getElementById('modalOverlay');
+  const modalDialog = document.getElementById('modalDialog');
+  const modalResizeHandle = document.getElementById('modalResizeHandle');
   const modalTitle = document.getElementById('modalTitle');
   const modalClose = document.getElementById('modalClose');
+
+  // --- Custom modal resize (2x delta to compensate for centering) ---
+  (function() {
+    var resizing = false, startX, startY, startW, startH;
+    modalResizeHandle.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      resizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startW = modalDialog.offsetWidth;
+      startH = modalDialog.offsetHeight;
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+    function onMouseMove(e) {
+      if (!resizing) return;
+      var dx = (e.clientX - startX) * 2;
+      var dy = (e.clientY - startY) * 2;
+      var newW = Math.max(320, Math.min(startW + dx, window.innerWidth * 0.95));
+      var newH = Math.max(300, Math.min(startH + dy, window.innerHeight * 0.9));
+      modalDialog.style.width = newW + 'px';
+      modalDialog.style.height = newH + 'px';
+    }
+    function onMouseUp() {
+      resizing = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    }
+  })();
   const saveBtn = document.getElementById('saveBtn');
   const cancelBtn = document.getElementById('cancelBtn');
   const deleteBtn = document.getElementById('deleteBtn');
@@ -1569,6 +1617,8 @@ body {
 
   function closeModal() {
     modalOverlay.classList.remove('active');
+    modalDialog.style.width = '';
+    modalDialog.style.height = '';
     editingId = null;
   }
 
