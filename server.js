@@ -7,6 +7,7 @@ const TASKS_FILE = path.join(__dirname, 'tasks.csv');
 const INDEX_FILE = path.join(__dirname, 'index.html');
 const REPLAN_FILE = path.join(__dirname, 'replan.js');
 const CONFIG_FILE = path.join(__dirname, 'server.conf');
+const TEAM_FILE = path.join(__dirname, 'team.conf');
 
 // --- Config (visible fields + order) ---
 
@@ -21,6 +22,21 @@ function readConfig() {
 
 function writeConfig(config) {
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2) + '\n');
+}
+
+// --- Team config (member hours per sprint) ---
+
+function readTeamConfig() {
+  try {
+    const data = fs.readFileSync(TEAM_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (e) {
+    return { defaultHours: 60, sprints: {} };
+  }
+}
+
+function writeTeamConfig(config) {
+  fs.writeFileSync(TEAM_FILE, JSON.stringify(config, null, 2) + '\n');
 }
 
 // --- CSV Parser (RFC 4180 compliant) ---
@@ -433,9 +449,67 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && req.url === '/api/team') {
+    const team = readTeamConfig();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(team));
+    return;
+  }
+
+  if (req.method === 'PUT' && req.url === '/api/team') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const team = JSON.parse(body);
+        writeTeamConfig(team);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      }
+    });
+    return;
+  }
+
   res.writeHead(404, { 'Content-Type': 'text/plain' });
   res.end('Not found');
 });
+
+// --- Initialize team.conf from CSV assignees on startup ---
+function initTeamConfig() {
+  const state = readTasks();
+  const teamConfig = readTeamConfig();
+
+  // Collect all assignees and sprint numbers from tasks
+  const members = new Set();
+  const sprintNums = new Set();
+  state.issues.forEach(i => {
+    if (i.assignee) members.add(i.assignee);
+    sprintNums.add(i.sprint || 1);
+  });
+
+  if (members.size === 0) return;
+
+  if (!teamConfig.sprints) teamConfig.sprints = {};
+  const defaultHours = teamConfig.defaultHours || 60;
+
+  // For each sprint, ensure all assignees are present
+  for (const sprintNum of sprintNums) {
+    const key = String(sprintNum);
+    if (!teamConfig.sprints[key]) teamConfig.sprints[key] = {};
+    for (const name of members) {
+      if (teamConfig.sprints[key][name] == null) {
+        teamConfig.sprints[key][name] = defaultHours;
+      }
+    }
+  }
+
+  writeTeamConfig(teamConfig);
+}
+
+initTeamConfig();
 
 server.listen(PORT, () => {
   console.log(`Sprint Board server running at http://localhost:${PORT}`);

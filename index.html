@@ -279,6 +279,97 @@ body {
   font-weight: 600;
 }
 
+.sprint-hours-summary {
+  display: inline-flex;
+  gap: 12px;
+  margin-left: 14px;
+  font-size: 12px;
+  color: var(--text-light);
+  align-items: center;
+}
+
+.sprint-hours-summary .hours-over {
+  color: var(--high);
+  font-weight: 600;
+}
+
+.sprint-hours-accum {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+  margin-left: 8px;
+  display: none;
+}
+
+.card:hover .sprint-hours-accum {
+  display: inline;
+}
+
+.team-modal-sprint {
+  margin-bottom: 18px;
+}
+.team-modal-sprint h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.team-modal-sprint .team-modal-total {
+  font-size: 12px;
+  color: var(--text-light);
+  font-weight: 400;
+  margin-left: 8px;
+}
+.team-modal-members {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px;
+}
+.team-modal-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--bg);
+  border-radius: 4px;
+}
+.team-modal-member .member-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+}
+.team-modal-member input {
+  width: 50px;
+  padding: 3px 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  text-align: center;
+  font-family: inherit;
+}
+.team-modal-member input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.team-modal-member .member-unit {
+  font-size: 12px;
+  color: var(--text-light);
+}
+.team-btn {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text);
+  margin-left: 8px;
+}
+.team-btn:hover {
+  background: var(--bg);
+  border-color: var(--accent);
+}
+
 .sprint-capacity {
   display: inline-flex;
   gap: 10px;
@@ -1031,9 +1122,10 @@ body {
   <div class="header-controls">
     <input type="text" id="searchInput" placeholder="Search issues...">
     <div class="view-toggle">
-      <button id="viewBacklog">Backlog</button>
-      <button id="viewBoard" class="active">Board</button>
+      <button id="viewBacklog" class="active">Backlog</button>
+      <button id="viewBoard">Board</button>
     </div>
+    <button class="team-btn" id="teamBtn">Team</button>
     <button class="btn btn-primary" id="createBtn">+ Create</button>
   </div>
 </header>
@@ -1041,7 +1133,7 @@ body {
 <div class="team-capacity" id="teamCapacity"></div>
 
 <div class="app-body">
-  <main class="board" id="board">
+  <main class="board hidden" id="board">
     <div class="column" data-status="todo">
       <div class="column-header">To Do <span class="count" id="countTodo">0</span></div>
       <div class="column-body" data-status="todo"></div>
@@ -1056,7 +1148,7 @@ body {
     </div>
   </main>
 
-  <div class="backlog-view" id="backlogView"></div>
+  <div class="backlog-view active" id="backlogView"></div>
 </div>
 
 <!-- Create / Edit Modal -->
@@ -1086,6 +1178,20 @@ body {
   </div>
 </div>
 
+<!-- Team Modal -->
+<div class="modal-overlay" id="teamModalOverlay">
+  <div class="modal" id="teamModalDialog" style="width:560px">
+    <div class="modal-header">
+      <h2 style="font-size:16px;font-weight:600;margin:0">Team Capacity</h2>
+      <button class="modal-close" id="teamModalClose">&times;</button>
+    </div>
+    <div class="modal-body" id="teamModalBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="teamModalDone">Done</button>
+    </div>
+  </div>
+</div>
+
 <svg class="dep-arrow-overlay" id="depArrowOverlay" width="100%" height="100%"></svg>
 <script src="/replan.js"></script>
 <script>
@@ -1093,7 +1199,8 @@ body {
   // --- State ---
   let state = { nextId: 1, projectKey: 'SB', sprintStart: '2026-02-15', issues: [] };
   let fieldConfig = { visibleFields: [] }; // from server.conf
-  let currentView = 'board'; // 'board' or 'backlog'
+  let teamConfig = { defaultHours: 60, sprints: {} }; // from team.conf
+  let currentView = 'backlog'; // 'board' or 'backlog'
 
   async function loadConfig() {
     try {
@@ -1114,6 +1221,29 @@ body {
       });
     } catch(e) {
       console.error('Failed to save config:', e);
+    }
+  }
+
+  async function loadTeamConfig() {
+    try {
+      const res = await fetch('/api/team');
+      teamConfig = await res.json();
+      if (!teamConfig.defaultHours) teamConfig.defaultHours = 60;
+      if (!teamConfig.sprints) teamConfig.sprints = {};
+    } catch(e) {
+      teamConfig = { defaultHours: 60, sprints: {} };
+    }
+  }
+
+  async function saveTeamConfig() {
+    try {
+      await fetch('/api/team', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(teamConfig)
+      });
+    } catch(e) {
+      console.error('Failed to save team config:', e);
     }
   }
 
@@ -1328,15 +1458,17 @@ body {
   }
 
   function getMemberCapacity(name, sprint) {
-    if (!state.teamCapacity) state.teamCapacity = {};
-    if (!state.teamCapacity[name]) state.teamCapacity[name] = {};
-    return state.teamCapacity[name][sprint] != null ? state.teamCapacity[name][sprint] : 80;
+    var sprintKey = String(sprint);
+    var sprintData = teamConfig.sprints[sprintKey];
+    if (sprintData && sprintData[name] != null) return sprintData[name];
+    return teamConfig.defaultHours || 60;
   }
 
   function setMemberCapacity(name, sprint, value) {
-    if (!state.teamCapacity) state.teamCapacity = {};
-    if (!state.teamCapacity[name]) state.teamCapacity[name] = {};
-    state.teamCapacity[name][sprint] = value;
+    var sprintKey = String(sprint);
+    if (!teamConfig.sprints[sprintKey]) teamConfig.sprints[sprintKey] = {};
+    teamConfig.sprints[sprintKey][name] = value;
+    saveTeamConfig();
   }
 
   function renderTeamCapacity(sprintIssues) {
@@ -1380,7 +1512,6 @@ body {
         if (isNaN(val) || val < 0) val = 0;
         input.value = val;
         setMemberCapacity(name, 1, val);
-        saveState();
         renderBoard();
       });
       // Prevent card-like drag on the input
@@ -1474,7 +1605,6 @@ body {
             if (isNaN(val) || val < 0) val = 0;
             capInput.value = val;
             setMemberCapacity(name, sprintNum, val);
-            saveState();
             renderBacklog();
           });
 
@@ -1489,6 +1619,47 @@ body {
         headerLeft.appendChild(capContainer);
       }
 
+      // Compute sprint hours
+      var totalEstimate = 0;
+      var spentHours = 0;
+      sprintIssues.forEach(function(i) {
+        var est = i.estimateHours || 0;
+        totalEstimate += est;
+        if (i.status === 'done') spentHours += est;
+      });
+
+      // Total available hours = sum of all team members' hours from team.conf
+      var totalAvailable = 0;
+      var sprintKey = String(sprintNum);
+      var sprintTeam = (teamConfig.sprints && teamConfig.sprints[sprintKey]) || {};
+      Object.keys(sprintTeam).forEach(function(name) {
+        totalAvailable += sprintTeam[name];
+      });
+
+      var remainingHours = totalEstimate - spentHours;
+
+      // Sprint hours summary
+      var hoursSummary = document.createElement('span');
+      hoursSummary.className = 'sprint-hours-summary';
+
+      var spentTotal = document.createElement('span');
+      if (totalEstimate > totalAvailable) {
+        var overSpan = document.createElement('span');
+        overSpan.className = 'hours-over';
+        overSpan.textContent = totalEstimate;
+        spentTotal.appendChild(overSpan);
+        spentTotal.appendChild(document.createTextNode('/' + totalAvailable + 'h'));
+      } else {
+        spentTotal.textContent = totalEstimate + '/' + totalAvailable + 'h';
+      }
+
+      var spentRemaining = document.createElement('span');
+      spentRemaining.textContent = (totalAvailable - totalEstimate) + 'h remaining';
+
+      hoursSummary.appendChild(spentTotal);
+      hoursSummary.appendChild(spentRemaining);
+      headerLeft.appendChild(hoursSummary);
+
       var headerRight = document.createElement('span');
       headerRight.className = 'sprint-count';
       headerRight.textContent = sprintIssues.length + ' task' + (sprintIssues.length !== 1 ? 's' : '');
@@ -1500,8 +1671,34 @@ body {
       body.className = 'sprint-section-body';
       body.dataset.sprint = sprintNum;
 
+      // Accumulated hours display in header (updates on card hover)
+      var accumDisplay = document.createElement('span');
+      accumDisplay.className = 'sprint-hours-accum';
+      hoursSummary.appendChild(accumDisplay);
+
+      // Pre-compute accumulated hours for each card position
+      var accumulated = 0;
+      var accumMap = {};
+      sprintIssues.forEach(function(i) {
+        accumulated += (i.estimateHours || 0);
+        accumMap[i.id] = accumulated;
+      });
+
       filteredIssues.forEach(issue => {
         const card = createCard(issue, true);
+        card.addEventListener('mouseenter', (function(issueId, display) {
+          return function() {
+            var accumVal = accumMap[issueId] || 0;
+            display.textContent = accumVal + '/' + totalAvailable + 'h';
+            display.style.color = accumVal > totalAvailable ? 'var(--high)' : 'var(--accent)';
+            display.style.display = 'inline';
+          };
+        })(issue.id, accumDisplay));
+        card.addEventListener('mouseleave', (function(display) {
+          return function() {
+            display.style.display = 'none';
+          };
+        })(accumDisplay));
         body.appendChild(card);
       });
 
@@ -2322,15 +2519,57 @@ body {
       return raw;
     }
 
-    // Sync dependsOn from rawRow dependency columns
-    function syncDependsOn(raw) {
+    // Sync all mapped issue properties from rawRow so server doesn't overwrite edits
+    function syncIssueFromRaw(issue, raw) {
       var headers = state.csvHeaders || [];
+
+      function getCol(name) {
+        var idx = headers.indexOf(name);
+        return (idx >= 0 && idx < raw.length) ? raw[idx] : null;
+      }
+
+      var assignee = getCol('Assignee');
+      if (assignee !== null) issue.assignee = assignee;
+
+      var description = getCol('Description');
+      if (description !== null) issue.description = description;
+
+      var status = getCol('Status');
+      if (status !== null) {
+        var statusMap = {
+          'open': 'todo', 'to do': 'todo', 'backlog': 'todo',
+          'in refinement': 'todo', 'new': 'todo', 'reopened': 'todo',
+          'in progress': 'inprogress', 'in development': 'inprogress', 'in review': 'inprogress',
+          'done': 'done', 'closed': 'done', 'resolved': 'done'
+        };
+        var mapped = statusMap[(status || '').toLowerCase().trim()];
+        if (mapped) issue.status = mapped;
+      }
+
+      var priority = getCol('Priority');
+      if (priority !== null) {
+        var prioMap = {
+          'blocker': 'high', 'critical': 'high', 'highest': 'high', 'high': 'high',
+          'major': 'medium', 'medium': 'medium', 'normal': 'medium',
+          'minor': 'low', 'low': 'low', 'trivial': 'low', 'lowest': 'low'
+        };
+        var mappedPrio = prioMap[(priority || '').toLowerCase().trim()];
+        if (mappedPrio) issue.priority = mappedPrio;
+      }
+
+      var estimate = getCol('Original Estimate');
+      if (estimate !== null) {
+        var sec = parseInt(estimate, 10);
+        issue.estimateHours = isNaN(sec) ? 0 : sec / 3600;
+      }
+
+      // Sync dependencies
       var depCols = ['Inward issue link (Depends)', 'Inward issue link (Finish to Start)'];
       var allDeps = [];
       depCols.forEach(function(col) {
-        var idx = headers.indexOf(col);
-        if (idx >= 0 && idx < raw.length && raw[idx]) {
-          raw[idx].split(/\s*;\s*/).forEach(function(s) {
+        var val = getCol(col);
+        if (val) {
+          val.split(/\s*;\s*/).forEach(function(s) {
             var v = s.trim();
             if (v) {
               var n = parseInt(v, 10);
@@ -2339,7 +2578,7 @@ body {
           });
         }
       });
-      return allDeps;
+      issue.dependsOn = allDeps;
     }
 
     if (editingId !== null) {
@@ -2348,23 +2587,25 @@ body {
         issue.title = title;
         if (key) issue.key = key;
         issue.rawRow = collectRawRow(issue.rawRow);
-        issue.dependsOn = syncDependsOn(issue.rawRow);
+        syncIssueFromRaw(issue, issue.rawRow);
       }
     } else {
       var newRaw = collectRawRow([]);
-      state.issues.push({
+      var newIssue = {
         id: state.nextId,
         key: key || state.projectKey + '-' + state.nextId,
         title: title,
         description: '',
         estimateHours: 0,
-        dependsOn: syncDependsOn(newRaw),
+        dependsOn: [],
         priority: 'medium',
         assignee: '',
         status: 'todo',
         sprint: 1,
         rawRow: newRaw
-      });
+      };
+      syncIssueFromRaw(newIssue, newRaw);
+      state.issues.push(newIssue);
       state.nextId++;
     }
 
@@ -2508,6 +2749,108 @@ body {
     });
   }
 
+  // --- Team Modal ---
+  const teamModalOverlay = document.getElementById('teamModalOverlay');
+  const teamModalBody = document.getElementById('teamModalBody');
+  const teamModalClose = document.getElementById('teamModalClose');
+  const teamModalDone = document.getElementById('teamModalDone');
+  const teamBtn = document.getElementById('teamBtn');
+
+  function renderTeamModal() {
+    teamModalBody.innerHTML = '';
+
+    // Collect all members from issues
+    var members = new Set();
+    state.issues.forEach(function(i) { if (i.assignee) members.add(i.assignee); });
+    var sortedMembers = Array.from(members).sort();
+
+    // Collect all sprint numbers
+    var sprintNums = new Set();
+    state.issues.forEach(function(i) { sprintNums.add(i.sprint || 1); });
+    var sortedSprints = Array.from(sprintNums).sort(function(a, b) { return a - b; });
+
+    if (sortedMembers.length === 0) {
+      teamModalBody.innerHTML = '<p style="color:var(--text-light);font-size:13px;padding:8px">No team members found. Assign tasks to team members first.</p>';
+      return;
+    }
+
+    sortedSprints.forEach(function(sprintNum) {
+      var section = document.createElement('div');
+      section.className = 'team-modal-sprint';
+
+      // Compute total for this sprint
+      var totalHours = 0;
+      sortedMembers.forEach(function(name) {
+        totalHours += getMemberCapacity(name, sprintNum);
+      });
+
+      var h3 = document.createElement('h3');
+      h3.textContent = 'Sprint ' + sprintNum;
+      var totalSpan = document.createElement('span');
+      totalSpan.className = 'team-modal-total';
+      totalSpan.textContent = '(' + totalHours + 'h total)';
+      h3.appendChild(totalSpan);
+      section.appendChild(h3);
+
+      var grid = document.createElement('div');
+      grid.className = 'team-modal-members';
+
+      sortedMembers.forEach(function(name) {
+        var row = document.createElement('div');
+        row.className = 'team-modal-member';
+
+        var nameSpan = document.createElement('span');
+        nameSpan.className = 'member-name';
+        nameSpan.textContent = name;
+
+        var input = document.createElement('input');
+        input.type = 'number';
+        input.value = getMemberCapacity(name, sprintNum);
+        input.min = '0';
+        input.step = '1';
+
+        input.addEventListener('change', function() {
+          var val = parseInt(input.value, 10);
+          if (isNaN(val) || val < 0) val = 0;
+          input.value = val;
+          setMemberCapacity(name, sprintNum, val);
+          // Update total
+          var newTotal = 0;
+          sortedMembers.forEach(function(n) {
+            newTotal += getMemberCapacity(n, sprintNum);
+          });
+          totalSpan.textContent = '(' + newTotal + 'h total)';
+        });
+
+        var unit = document.createElement('span');
+        unit.className = 'member-unit';
+        unit.textContent = 'h';
+
+        row.appendChild(nameSpan);
+        row.appendChild(input);
+        row.appendChild(unit);
+        grid.appendChild(row);
+      });
+
+      section.appendChild(grid);
+      teamModalBody.appendChild(section);
+    });
+  }
+
+  function openTeamModal() {
+    renderTeamModal();
+    teamModalOverlay.classList.add('active');
+  }
+
+  function closeTeamModal() {
+    teamModalOverlay.classList.remove('active');
+    render();
+  }
+
+  teamBtn.addEventListener('click', openTeamModal);
+  teamModalClose.addEventListener('click', closeTeamModal);
+  teamModalDone.addEventListener('click', closeTeamModal);
+
   // --- Event listeners ---
   createBtn.addEventListener('click', openCreateModal);
   modalClose.addEventListener('click', closeModal);
@@ -2518,7 +2861,10 @@ body {
   // Clicking outside the modal no longer closes it — use X or Cancel instead
 
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') {
+      closeModal();
+      closeTeamModal();
+    }
   });
 
   viewBoardBtn.addEventListener('click', function() { setView('board'); });
@@ -2534,7 +2880,7 @@ body {
   // --- Init ---
   setupDropZones();
   teamCapacityEl.classList.add('active');
-  Promise.all([loadState(), loadConfig()]).then(function() { render(); });
+  Promise.all([loadState(), loadConfig(), loadTeamConfig()]).then(function() { render(); });
 })();
 </script>
 </body>
