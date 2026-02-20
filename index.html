@@ -406,6 +406,20 @@ body {
   font-weight: 500;
   margin-bottom: 8px;
   word-break: break-word;
+  cursor: text;
+}
+
+.card-title-input {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  width: 100%;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 2px 4px;
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
 }
 
 .card-footer {
@@ -456,36 +470,6 @@ body {
 .badge-dep {
   background: #f3e5f5;
   color: #7b1fa2;
-}
-
-.deps-checklist {
-  max-height: 120px;
-  overflow-y: auto;
-  border: 1px solid #ddd;
-  border-radius: var(--radius);
-  padding: 4px 0;
-}
-
-.deps-checklist label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  font-size: 13px;
-  cursor: pointer;
-  text-transform: none;
-  letter-spacing: normal;
-  font-weight: 400;
-  color: var(--text);
-}
-
-.deps-checklist label:hover {
-  background: #f4f5f7;
-}
-
-.deps-checklist input[type="checkbox"] {
-  width: auto;
-  margin: 0;
 }
 
 .card-deps {
@@ -548,6 +532,7 @@ body {
   max-height: 90vh;
   min-width: 320px;
   min-height: 300px;
+  transition: width 0.2s ease;
   overflow-y: auto;
   box-shadow: 0 10px 40px rgba(0,0,0,0.3);
   position: relative;
@@ -573,7 +558,54 @@ body {
   align-items: center;
 }
 
-.modal-header h2 { font-size: 16px; }
+.modal-header-fields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.modal-key-editable, .modal-title-editable {
+  cursor: text;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  font-size: 16px;
+  font-weight: 600;
+}
+.modal-key-editable:hover, .modal-title-editable:hover {
+  border-color: #ccc;
+  background: #f5f5f5;
+}
+.modal-key-editable {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.modal-title-editable {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.modal-key-input, .modal-title-input {
+  font-size: 16px;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  outline: none;
+}
+.modal-key-input {
+  width: 160px;
+  flex-shrink: 0;
+}
+.modal-title-input {
+  flex: 1;
+  min-width: 0;
+}
 
 .modal-close {
   background: none;
@@ -618,6 +650,240 @@ body {
 }
 
 .form-group textarea { resize: vertical; min-height: 60px; }
+
+#pinnedFieldsContainer .pinned-field-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  margin-bottom: 14px;
+}
+
+#pinnedFieldsContainer .pinned-field-row .form-group {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.pinned-drag-handle {
+  width: 24px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s;
+  font-size: 18px;
+  color: #333;
+  user-select: none;
+  flex-shrink: 0;
+  margin-top: 18px;
+  line-height: 1;
+}
+
+#pinnedFieldsContainer .pinned-field-row:hover .pinned-drag-handle {
+  opacity: 0.5 !important;
+}
+
+.pinned-drag-handle:active,
+.pinned-drag-handle.dragging {
+  opacity: 1 !important;
+  cursor: grabbing;
+}
+
+#pinnedFieldsContainer .pinned-field-row.drag-over-above {
+  border-top: 2px solid var(--accent);
+}
+
+#pinnedFieldsContainer .pinned-field-row.drag-over-below {
+  border-bottom: 2px solid var(--accent);
+}
+
+#pinnedFieldsContainer .pinned-field-row.pinned-dragging {
+  opacity: 0.4;
+}
+
+.csv-fields-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  user-select: none;
+  border-top: 1px solid #eee;
+  margin-top: 6px;
+}
+
+.csv-fields-toggle .arrow {
+  transition: transform 0.15s;
+  font-size: 10px;
+}
+
+.csv-fields-toggle .arrow.open {
+  transform: rotate(90deg);
+}
+
+.csv-fields-extra {
+  display: none;
+}
+
+.csv-fields-extra.open {
+  display: block;
+}
+
+.csv-fields-filter {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-family: inherit;
+  margin-bottom: 8px;
+}
+
+.csv-fields-filter:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+#csvFieldsContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px 10px;
+}
+
+#csvFieldsContainer .form-group {
+  margin-bottom: 0;
+}
+
+#csvFieldsContainer .form-group label {
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#csvFieldsContainer .form-group label input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+#csvFieldsContainer .form-group input,
+#csvFieldsContainer .form-group textarea {
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+#csvFieldsContainer .form-group textarea {
+  min-height: 32px;
+}
+
+/* Dependency dropdown widget */
+.dep-widget {
+  position: relative;
+}
+.dep-widget-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.dep-widget-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  flex: 1;
+  min-height: 28px;
+  padding: 2px 4px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  align-items: center;
+  font-size: 12px;
+}
+.dep-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.dep-tag-remove {
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.8;
+}
+.dep-tag-remove:hover {
+  opacity: 1;
+}
+.dep-dropdown-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+.form-group:hover .dep-dropdown-btn,
+.pinned-field-row:hover .dep-dropdown-btn {
+  opacity: 1;
+}
+.dep-dropdown-btn:hover {
+  background: var(--accent);
+}
+.dep-dropdown-list {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  margin-top: 2px;
+}
+.dep-dropdown-list.open {
+  display: block;
+}
+.dep-dropdown-item {
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.dep-dropdown-item:last-child {
+  border-bottom: none;
+}
+.dep-dropdown-item:hover {
+  background: #f0f5ff;
+}
+.dep-dropdown-item .dep-item-key {
+  font-weight: 600;
+  margin-right: 6px;
+}
 
 .modal-footer {
   padding: 14px 20px;
@@ -798,49 +1064,18 @@ body {
   <div class="modal" id="modalDialog">
     <div class="modal-resize-handle" id="modalResizeHandle"></div>
     <div class="modal-header">
-      <h2 id="modalTitle">Create Issue</h2>
+      <div class="modal-header-fields" id="modalHeaderFields"></div>
       <button class="modal-close" id="modalClose">&times;</button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
-        <label>Title *</label>
-        <input type="text" id="issueTitle" placeholder="Issue summary">
+      <div id="pinnedFieldsContainer"></div>
+      <div class="csv-fields-toggle" id="csvFieldsToggle">
+        <span class="arrow" id="csvFieldsArrow">&#9654;</span>
+        All CSV Fields
       </div>
-      <div class="form-group">
-        <label>Description</label>
-        <textarea id="issueDesc" placeholder="Details (optional)"></textarea>
-      </div>
-      <div class="form-group">
-        <label>Priority</label>
-        <select id="issuePriority">
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="low">Low</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Assignee</label>
-        <input type="text" id="issueAssignee" placeholder="Name (optional)">
-      </div>
-      <div class="form-group">
-        <label>Estimate (hours)</label>
-        <input type="number" id="issueEstimate" min="0" step="0.5" value="0" placeholder="0">
-      </div>
-      <div class="form-group">
-        <label>Depends On</label>
-        <div id="issueDependsOn" class="deps-checklist"></div>
-      </div>
-      <div class="form-group">
-        <label>Status</label>
-        <select id="issueStatus">
-          <option value="todo">To Do</option>
-          <option value="inprogress">In Progress</option>
-          <option value="done">Done</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Sprint</label>
-        <input type="number" id="issueSprint" min="1" step="1" value="1">
+      <div class="csv-fields-extra" id="csvFieldsExtra">
+        <input type="text" class="csv-fields-filter" id="csvFieldsFilter" placeholder="Filter fields...">
+        <div id="csvFieldsContainer"></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -857,7 +1092,30 @@ body {
 (function() {
   // --- State ---
   let state = { nextId: 1, projectKey: 'SB', sprintStart: '2026-02-15', issues: [] };
+  let fieldConfig = { visibleFields: [] }; // from server.conf
   let currentView = 'board'; // 'board' or 'backlog'
+
+  async function loadConfig() {
+    try {
+      const res = await fetch('/api/config');
+      fieldConfig = await res.json();
+      if (!Array.isArray(fieldConfig.visibleFields)) fieldConfig.visibleFields = [];
+    } catch(e) {
+      fieldConfig = { visibleFields: [] };
+    }
+  }
+
+  async function saveConfig() {
+    try {
+      await fetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fieldConfig)
+      });
+    } catch(e) {
+      console.error('Failed to save config:', e);
+    }
+  }
 
   async function loadState() {
     try {
@@ -867,6 +1125,7 @@ body {
         state = data;
         if (!state.sprintStart) state.sprintStart = '2026-02-15';
         if (!state.teamCapacity) state.teamCapacity = {};
+        if (!state.csvHeaders) state.csvHeaders = [];
         // Migrate old flat teamCapacity { name: number } to per-sprint { name: { sprint: number } }
         Object.keys(state.teamCapacity).forEach(function(name) {
           if (typeof state.teamCapacity[name] === 'number') {
@@ -927,7 +1186,6 @@ body {
   const modalOverlay = document.getElementById('modalOverlay');
   const modalDialog = document.getElementById('modalDialog');
   const modalResizeHandle = document.getElementById('modalResizeHandle');
-  const modalTitle = document.getElementById('modalTitle');
   const modalClose = document.getElementById('modalClose');
 
   // --- Custom modal resize (2x delta to compensate for centering) ---
@@ -962,18 +1220,42 @@ body {
   const saveBtn = document.getElementById('saveBtn');
   const cancelBtn = document.getElementById('cancelBtn');
   const deleteBtn = document.getElementById('deleteBtn');
-  const issueTitle = document.getElementById('issueTitle');
-  const issueDesc = document.getElementById('issueDesc');
-  const issuePriority = document.getElementById('issuePriority');
-  const issueAssignee = document.getElementById('issueAssignee');
-  const issueEstimate = document.getElementById('issueEstimate');
-  const issueDependsOn = document.getElementById('issueDependsOn');
-  const issueStatus = document.getElementById('issueStatus');
-  const issueSprint = document.getElementById('issueSprint');
+  const modalHeaderFields = document.getElementById('modalHeaderFields');
+  const pinnedFieldsContainer = document.getElementById('pinnedFieldsContainer');
+  const csvFieldsToggle = document.getElementById('csvFieldsToggle');
+  const csvFieldsArrow = document.getElementById('csvFieldsArrow');
+  const csvFieldsExtra = document.getElementById('csvFieldsExtra');
+  const csvFieldsFilter = document.getElementById('csvFieldsFilter');
+  const csvFieldsContainer = document.getElementById('csvFieldsContainer');
   const progressFill = document.getElementById('progressFill');
   const progressText = document.getElementById('progressText');
   const sprintNameEl = document.getElementById('sprintName');
   const sprintDatesEl = document.getElementById('sprintDates');
+
+  // CSV fields toggle
+  csvFieldsToggle.addEventListener('click', function() {
+    var isOpen = csvFieldsExtra.classList.toggle('open');
+    csvFieldsArrow.classList.toggle('open', isOpen);
+    // Widen modal to fit 4-column grid when open
+    if (isOpen) {
+      modalDialog.style.width = Math.min(1760, window.innerWidth * 0.95) + 'px';
+    } else {
+      modalDialog.style.width = '';
+    }
+  });
+
+  csvFieldsFilter.addEventListener('input', function() {
+    var q = csvFieldsFilter.value.toLowerCase();
+    csvFieldsContainer.querySelectorAll('.form-group').forEach(function(fg) {
+      var name = fg.dataset.colName || '';
+      fg.style.display = name.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+
+  // Columns already handled by the main form fields
+  var handledCsvCols = new Set([
+    'Summary', 'Issue key', 'Issue id'
+  ]);
 
   let editingId = null;
 
@@ -1318,7 +1600,43 @@ body {
       card.addEventListener('mouseleave', function() { unhighlightDepArrows(); });
     }
 
-    // Click to edit
+    // Click on title to inline-edit
+    var titleEl = card.querySelector('.card-title');
+    titleEl.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'card-title-input';
+      input.value = issue.title;
+      titleEl.replaceWith(input);
+      input.focus();
+      input.select();
+
+      function commitEdit() {
+        var newTitle = input.value.trim();
+        if (newTitle && newTitle !== issue.title) {
+          issue.title = newTitle;
+          var summaryIdx = (state.csvHeaders || []).indexOf('Summary');
+          if (issue.rawRow && summaryIdx >= 0) {
+            while (issue.rawRow.length <= summaryIdx) issue.rawRow.push('');
+            issue.rawRow[summaryIdx] = newTitle;
+          }
+          saveState();
+        }
+        render();
+      }
+
+      input.addEventListener('blur', commitEdit);
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { input.blur(); }
+        if (e.key === 'Escape') { input.removeEventListener('blur', commitEdit); render(); }
+      });
+      // Prevent drag while editing
+      input.addEventListener('mousedown', function(e) { e.stopPropagation(); });
+      input.addEventListener('dragstart', function(e) { e.preventDefault(); });
+    });
+
+    // Click on rest of card to open modal
     card.addEventListener('click', function() { openEditModal(issue.id); });
 
     return card;
@@ -1550,115 +1868,502 @@ body {
     });
   }
 
-  // --- Populate depends-on checkboxes ---
-  function populateDependsOn(excludeId, selectedIds) {
-    issueDependsOn.innerHTML = '';
-    var sel = selectedIds || [];
-    state.issues.forEach(function(issue) {
-      if (issue.id !== excludeId) {
-        var lbl = document.createElement('label');
-        var cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.value = issue.id;
-        if (sel.indexOf(issue.id) !== -1) cb.checked = true;
-        lbl.appendChild(cb);
-        lbl.appendChild(document.createTextNode(' ' + issue.key + ' \u2013 ' + issue.title));
-        issueDependsOn.appendChild(lbl);
+  // --- Modal ---
+  var modalValues = { key: '', title: '' };
+
+  function setupHeaderFields(issue) {
+    var keyVal = issue ? issue.key : state.projectKey + '-' + state.nextId;
+    var titleVal = issue ? issue.title : '';
+    modalValues.key = keyVal;
+    modalValues.title = titleVal;
+    modalHeaderFields.innerHTML =
+      '<span class="modal-key-editable" id="modalKeyEditable">' + escapeHtml(keyVal) + '</span>' +
+      '<span class="modal-title-editable" id="modalTitleEditable">' + (titleVal ? escapeHtml(titleVal) : '<span style="color:#999">Issue summary</span>') + '</span>';
+
+    function makeEditable(el, inputClass, currentVal, onCommit) {
+      el.addEventListener('click', function handler() {
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.className = inputClass;
+        input.value = currentVal();
+        el.replaceWith(input);
+        input.focus();
+        input.select();
+
+        function commit() {
+          var v = input.value.trim();
+          onCommit(v);
+          // Rebuild header fields to reflect changes
+          setupHeaderFields(issue);
+        }
+        input.addEventListener('blur', commit);
+        input.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') input.blur();
+          if (e.key === 'Escape') { input.removeEventListener('blur', commit); setupHeaderFields(issue); }
+        });
+      });
+    }
+
+    var keyEl = document.getElementById('modalKeyEditable');
+    var titleEl = document.getElementById('modalTitleEditable');
+
+    makeEditable(keyEl, 'modal-key-input', function() { return keyVal; }, function(v) {
+      if (v && issue) {
+        issue.key = v;
+        var keyIdx = (state.csvHeaders || []).indexOf('Issue key');
+        if (issue.rawRow && keyIdx >= 0) {
+          while (issue.rawRow.length <= keyIdx) issue.rawRow.push('');
+          issue.rawRow[keyIdx] = v;
+        }
+      }
+      keyVal = v || keyVal;
+      modalValues.key = keyVal;
+    });
+
+    makeEditable(titleEl, 'modal-title-input', function() { return titleVal; }, function(v) {
+      if (issue) {
+        issue.title = v || issue.title;
+        var summaryIdx = (state.csvHeaders || []).indexOf('Summary');
+        if (issue.rawRow && summaryIdx >= 0) {
+          while (issue.rawRow.length <= summaryIdx) issue.rawRow.push('');
+          issue.rawRow[summaryIdx] = issue.title;
+        }
+      }
+      titleVal = v || titleVal;
+      modalValues.title = titleVal;
+    });
+  }
+
+  function getModalTitle() {
+    // Check if an input is active (user is typing)
+    var input = modalHeaderFields.querySelector('.modal-title-input');
+    if (input) return input.value.trim();
+    return modalValues.title;
+  }
+
+  function getModalKey() {
+    var input = modalHeaderFields.querySelector('.modal-key-input');
+    if (input) return input.value.trim();
+    return modalValues.key;
+  }
+
+  function openCreateModal() {
+    editingId = null;
+    setupHeaderFields(null);
+    populatePinnedFields(null);
+    populateCsvFields(null);
+    deleteBtn.style.display = 'none';
+    saveBtn.textContent = 'Create';
+    modalOverlay.classList.add('active');
+    document.getElementById('modalTitleEditable').click();
+  }
+
+  function isFieldVisible(header) {
+    return fieldConfig.visibleFields.indexOf(header) !== -1;
+  }
+
+  function toggleFieldVisibility(header) {
+    var idx = fieldConfig.visibleFields.indexOf(header);
+    if (idx !== -1) {
+      fieldConfig.visibleFields.splice(idx, 1);
+    } else {
+      fieldConfig.visibleFields.push(header);
+    }
+    saveConfig();
+    // Re-render pinned fields with current issue data
+    var issue = editingId !== null ? state.issues.find(function(i) { return i.id === editingId; }) : null;
+    populatePinnedFields(issue);
+  }
+
+  var DEP_COLUMNS = ['Inward issue link (Depends)', 'Inward issue link (Finish to Start)'];
+
+  function isDependencyColumn(idx) {
+    var headers = state.csvHeaders || [];
+    return idx >= 0 && idx < headers.length && DEP_COLUMNS.indexOf(headers[idx]) !== -1;
+  }
+
+  function createDepWidget(val, idx) {
+    var widget = document.createElement('div');
+    widget.className = 'dep-widget';
+
+    // Hidden input to hold the actual value for save
+    var hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.value = val;
+    hidden.dataset.csvIdx = idx;
+    hidden.className = 'csv-field-input';
+    widget.appendChild(hidden);
+
+    var row = document.createElement('div');
+    row.className = 'dep-widget-row';
+
+    var tagsContainer = document.createElement('div');
+    tagsContainer.className = 'dep-widget-tags';
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'dep-dropdown-btn';
+    btn.innerHTML = '&#9660;'; // ▼
+
+    var dropdown = document.createElement('div');
+    dropdown.className = 'dep-dropdown-list';
+
+    row.appendChild(tagsContainer);
+    row.appendChild(btn);
+    widget.appendChild(row);
+    widget.appendChild(dropdown);
+
+    // Current issue being edited
+    var currentIssueId = editingId;
+
+    function getDepIds() {
+      return hidden.value.trim() ? hidden.value.split(/\s*;\s*/).map(function(s) { return s.trim(); }).filter(Boolean) : [];
+    }
+
+    function setDepIds(ids) {
+      hidden.value = ids.join('; ');
+    }
+
+    function renderTags() {
+      tagsContainer.innerHTML = '';
+      var ids = getDepIds();
+      if (ids.length === 0) {
+        var placeholder = document.createElement('span');
+        placeholder.style.color = '#999';
+        placeholder.style.fontSize = '11px';
+        placeholder.textContent = 'No dependencies';
+        tagsContainer.appendChild(placeholder);
+        return;
+      }
+      ids.forEach(function(depId) {
+        var tag = document.createElement('span');
+        tag.className = 'dep-tag';
+        // Find issue key for display
+        var depIssue = state.issues.find(function(i) { return String(i.id) === depId || i.key === depId; });
+        tag.textContent = depIssue ? depIssue.key : depId;
+        var removeBtn = document.createElement('span');
+        removeBtn.className = 'dep-tag-remove';
+        removeBtn.textContent = '\u00d7';
+        removeBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var currentIds = getDepIds().filter(function(d) { return d !== depId; });
+          setDepIds(currentIds);
+          renderTags();
+        });
+        tag.appendChild(removeBtn);
+        tagsContainer.appendChild(tag);
+      });
+    }
+
+    function renderDropdown() {
+      dropdown.innerHTML = '';
+      var currentDeps = getDepIds();
+      var issues = state.issues || [];
+      issues.forEach(function(issue) {
+        // Don't show current issue or already-added deps
+        if (issue.id === currentIssueId) return;
+        if (currentDeps.indexOf(String(issue.id)) !== -1) return;
+
+        var item = document.createElement('div');
+        item.className = 'dep-dropdown-item';
+        var keySpan = document.createElement('span');
+        keySpan.className = 'dep-item-key';
+        keySpan.textContent = issue.key;
+        item.appendChild(keySpan);
+        item.appendChild(document.createTextNode(issue.title));
+        item.addEventListener('click', function() {
+          var ids = getDepIds();
+          ids.push(String(issue.id));
+          setDepIds(ids);
+          renderTags();
+          dropdown.classList.remove('open');
+          renderDropdown(); // refresh to remove added item
+        });
+        dropdown.appendChild(item);
+      });
+      if (dropdown.children.length === 0) {
+        var empty = document.createElement('div');
+        empty.className = 'dep-dropdown-item';
+        empty.style.color = '#999';
+        empty.textContent = 'No tasks available';
+        dropdown.appendChild(empty);
+      }
+    }
+
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var isOpen = dropdown.classList.contains('open');
+      // Close all other dropdowns first
+      document.querySelectorAll('.dep-dropdown-list.open').forEach(function(d) { d.classList.remove('open'); });
+      if (!isOpen) {
+        renderDropdown();
+        dropdown.classList.add('open');
+      }
+    });
+
+    // Close dropdown on outside click
+    document.addEventListener('click', function(e) {
+      if (!widget.contains(e.target)) {
+        dropdown.classList.remove('open');
+      }
+    });
+
+    renderTags();
+    return widget;
+  }
+
+  function createFieldInput(val, idx) {
+    if (isDependencyColumn(idx)) {
+      return createDepWidget(val, idx);
+    }
+    var input;
+    if (val.length > 80 || val.includes('\n')) {
+      input = document.createElement('textarea');
+      input.rows = 3;
+    } else {
+      input = document.createElement('input');
+      input.type = 'text';
+    }
+    input.value = val;
+    input.dataset.csvIdx = idx;
+    input.className = 'csv-field-input';
+    return input;
+  }
+
+  var pinnedDragState = { dragging: null };
+
+  function pinnedDragReorder(fromHeader, toHeader, insertBefore) {
+    var fromIdx = fieldConfig.visibleFields.indexOf(fromHeader);
+    if (fromIdx === -1) return;
+    // Remove from old position
+    fieldConfig.visibleFields.splice(fromIdx, 1);
+    // Find new position
+    var toIdx = fieldConfig.visibleFields.indexOf(toHeader);
+    if (toIdx === -1) {
+      fieldConfig.visibleFields.push(fromHeader);
+    } else {
+      if (insertBefore) {
+        fieldConfig.visibleFields.splice(toIdx, 0, fromHeader);
+      } else {
+        fieldConfig.visibleFields.splice(toIdx + 1, 0, fromHeader);
+      }
+    }
+    saveConfig();
+    // Re-render preserving current input values
+    var issue = editingId !== null ? state.issues.find(function(i) { return i.id === editingId; }) : null;
+    // Snapshot current input values before re-render
+    var inputValues = {};
+    pinnedFieldsContainer.querySelectorAll('.csv-field-input').forEach(function(input) {
+      inputValues[input.dataset.csvIdx] = input.value;
+    });
+    populatePinnedFields(issue);
+    // Restore edited values
+    pinnedFieldsContainer.querySelectorAll('.csv-field-input').forEach(function(input) {
+      if (inputValues[input.dataset.csvIdx] !== undefined) {
+        input.value = inputValues[input.dataset.csvIdx];
       }
     });
   }
 
-  function getSelectedDeps() {
-    var deps = [];
-    issueDependsOn.querySelectorAll('input[type="checkbox"]:checked').forEach(function(cb) {
-      deps.push(parseInt(cb.value, 10));
+  function populatePinnedFields(issue) {
+    pinnedFieldsContainer.innerHTML = '';
+    var headers = state.csvHeaders || [];
+    var rawRow = issue ? (issue.rawRow || []) : [];
+    if (headers.length === 0 || fieldConfig.visibleFields.length === 0) return;
+
+    // Render in the order defined by visibleFields
+    fieldConfig.visibleFields.forEach(function(header) {
+      var idx = headers.indexOf(header);
+      if (idx === -1) return;
+      if (handledCsvCols.has(header)) return;
+
+      var row = document.createElement('div');
+      row.className = 'pinned-field-row';
+      row.dataset.pinnedHeader = header;
+
+      // Drag handle
+      var handle = document.createElement('span');
+      handle.className = 'pinned-drag-handle';
+      handle.innerHTML = '&#9776;'; // hamburger icon ☰
+      handle.draggable = true;
+      handle.addEventListener('dragstart', function(e) {
+        pinnedDragState.dragging = header;
+        handle.classList.add('dragging');
+        row.classList.add('pinned-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', header);
+      });
+      handle.addEventListener('dragend', function() {
+        handle.classList.remove('dragging');
+        row.classList.remove('pinned-dragging');
+        pinnedDragState.dragging = null;
+        pinnedFieldsContainer.querySelectorAll('.drag-over-above, .drag-over-below').forEach(function(el) {
+          el.classList.remove('drag-over-above', 'drag-over-below');
+        });
+      });
+
+      row.addEventListener('dragover', function(e) {
+        if (!pinnedDragState.dragging) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        var rect = row.getBoundingClientRect();
+        var mid = rect.top + rect.height / 2;
+        row.classList.toggle('drag-over-above', e.clientY < mid);
+        row.classList.toggle('drag-over-below', e.clientY >= mid);
+      });
+      row.addEventListener('dragleave', function() {
+        row.classList.remove('drag-over-above', 'drag-over-below');
+      });
+      row.addEventListener('drop', function(e) {
+        e.preventDefault();
+        row.classList.remove('drag-over-above', 'drag-over-below');
+        var fromHeader = pinnedDragState.dragging;
+        if (!fromHeader || fromHeader === header) return;
+        var rect = row.getBoundingClientRect();
+        var insertBefore = e.clientY < rect.top + rect.height / 2;
+        pinnedDragReorder(fromHeader, header, insertBefore);
+      });
+
+      var fg = document.createElement('div');
+      fg.className = 'form-group';
+      fg.dataset.colName = header;
+      var lbl = document.createElement('label');
+      lbl.textContent = header;
+      var val = idx < rawRow.length ? rawRow[idx] : '';
+      var input = createFieldInput(val, idx);
+      fg.appendChild(lbl);
+      fg.appendChild(input);
+
+      row.appendChild(handle);
+      row.appendChild(fg);
+      pinnedFieldsContainer.appendChild(row);
     });
-    return deps;
   }
 
-  // --- Modal ---
-  function openCreateModal() {
-    editingId = null;
-    modalTitle.textContent = 'Create Issue';
-    issueTitle.value = '';
-    issueDesc.value = '';
-    issuePriority.value = 'medium';
-    issueAssignee.value = '';
-    issueEstimate.value = '0';
-    populateDependsOn(null, []);
-    issueStatus.value = 'todo';
-    issueSprint.value = '1';
-    deleteBtn.style.display = 'none';
-    saveBtn.textContent = 'Create';
-    modalOverlay.classList.add('active');
-    issueTitle.focus();
+  function populateCsvFields(issue) {
+    csvFieldsContainer.innerHTML = '';
+    csvFieldsFilter.value = '';
+    var headers = state.csvHeaders || [];
+    var rawRow = issue ? (issue.rawRow || []) : [];
+    if (headers.length === 0) {
+      csvFieldsContainer.innerHTML = '<p style="font-size:12px;color:var(--text-light)">No CSV columns available.</p>';
+      return;
+    }
+    headers.forEach(function(header, idx) {
+      if (handledCsvCols.has(header)) return;
+      var fg = document.createElement('div');
+      fg.className = 'form-group';
+      fg.dataset.colName = header;
+
+      var lbl = document.createElement('label');
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = isFieldVisible(header);
+      cb.addEventListener('change', function(e) {
+        e.stopPropagation();
+        toggleFieldVisibility(header);
+      });
+      lbl.appendChild(cb);
+      lbl.appendChild(document.createTextNode(' ' + header));
+
+      var val = idx < rawRow.length ? rawRow[idx] : '';
+      var input = createFieldInput(val, idx);
+      fg.appendChild(lbl);
+      fg.appendChild(input);
+      csvFieldsContainer.appendChild(fg);
+    });
   }
 
   function openEditModal(id) {
     var issue = state.issues.find(function(i) { return i.id === id; });
     if (!issue) return;
     editingId = id;
-    modalTitle.textContent = 'Edit ' + issue.key;
-    issueTitle.value = issue.title;
-    issueDesc.value = issue.description || '';
-    issuePriority.value = issue.priority;
-    issueAssignee.value = issue.assignee || '';
-    issueEstimate.value = issue.estimateHours || 0;
-    var deps = issue.dependsOn || [];
-    if (!Array.isArray(deps)) deps = deps ? [deps] : [];
-    populateDependsOn(id, deps);
-    issueStatus.value = issue.status;
-    issueSprint.value = issue.sprint || 1;
+    setupHeaderFields(issue);
+    populatePinnedFields(issue);
+    populateCsvFields(issue);
     deleteBtn.style.display = 'inline-block';
     saveBtn.textContent = 'Update';
     modalOverlay.classList.add('active');
-    issueTitle.focus();
   }
 
   function closeModal() {
     modalOverlay.classList.remove('active');
     modalDialog.style.width = '';
     modalDialog.style.height = '';
+    csvFieldsExtra.classList.remove('open');
+    csvFieldsArrow.classList.remove('open');
     editingId = null;
   }
 
   function handleSave() {
-    var title = issueTitle.value.trim();
+    var title = getModalTitle();
+    var key = getModalKey();
     if (!title) {
-      issueTitle.style.borderColor = 'var(--high)';
-      issueTitle.focus();
+      var titleEl = document.getElementById('modalTitleEditable');
+      if (titleEl) { titleEl.style.borderColor = 'var(--high)'; titleEl.click(); }
       return;
     }
-    issueTitle.style.borderColor = '';
 
-    var estimate = parseFloat(issueEstimate.value) || 0;
-    var deps = getSelectedDeps();
-    var sprint = parseInt(issueSprint.value, 10) || 1;
+    // Collect edited CSV field values into rawRow
+    function collectRawRow(existingRaw) {
+      var raw = existingRaw ? [...existingRaw] : [];
+      // Collect from both pinned fields and all-CSV-fields
+      // Pinned fields last so they take priority over CSV fields panel
+      var containers = [csvFieldsContainer, pinnedFieldsContainer];
+      containers.forEach(function(container) {
+        container.querySelectorAll('.csv-field-input').forEach(function(input) {
+          var idx = parseInt(input.dataset.csvIdx, 10);
+          if (!isNaN(idx)) {
+            while (raw.length <= idx) raw.push('');
+            raw[idx] = input.value;
+          }
+        });
+      });
+      return raw;
+    }
+
+    // Sync dependsOn from rawRow dependency columns
+    function syncDependsOn(raw) {
+      var headers = state.csvHeaders || [];
+      var depCols = ['Inward issue link (Depends)', 'Inward issue link (Finish to Start)'];
+      var allDeps = [];
+      depCols.forEach(function(col) {
+        var idx = headers.indexOf(col);
+        if (idx >= 0 && idx < raw.length && raw[idx]) {
+          raw[idx].split(/\s*;\s*/).forEach(function(s) {
+            var v = s.trim();
+            if (v) {
+              var n = parseInt(v, 10);
+              if (!isNaN(n) && allDeps.indexOf(n) === -1) allDeps.push(n);
+            }
+          });
+        }
+      });
+      return allDeps;
+    }
 
     if (editingId !== null) {
       var issue = state.issues.find(function(i) { return i.id === editingId; });
       if (issue) {
         issue.title = title;
-        issue.description = issueDesc.value.trim();
-        issue.priority = issuePriority.value;
-        issue.assignee = issueAssignee.value.trim();
-        issue.estimateHours = estimate;
-        issue.dependsOn = deps;
-        issue.status = issueStatus.value;
-        issue.sprint = sprint;
+        if (key) issue.key = key;
+        issue.rawRow = collectRawRow(issue.rawRow);
+        issue.dependsOn = syncDependsOn(issue.rawRow);
       }
     } else {
+      var newRaw = collectRawRow([]);
       state.issues.push({
         id: state.nextId,
-        key: state.projectKey + '-' + state.nextId,
+        key: key || state.projectKey + '-' + state.nextId,
         title: title,
-        description: issueDesc.value.trim(),
-        estimateHours: estimate,
-        dependsOn: deps,
-        priority: issuePriority.value,
-        assignee: issueAssignee.value.trim(),
-        status: issueStatus.value,
-        sprint: sprint
+        description: '',
+        estimateHours: 0,
+        dependsOn: syncDependsOn(newRaw),
+        priority: 'medium',
+        assignee: '',
+        status: 'todo',
+        sprint: 1,
+        rawRow: newRaw
       });
       state.nextId++;
     }
@@ -1810,9 +2515,7 @@ body {
   saveBtn.addEventListener('click', handleSave);
   deleteBtn.addEventListener('click', handleDelete);
 
-  modalOverlay.addEventListener('click', function(e) {
-    if (e.target === modalOverlay) closeModal();
-  });
+  // Clicking outside the modal no longer closes it — use X or Cancel instead
 
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeModal();
@@ -1831,7 +2534,7 @@ body {
   // --- Init ---
   setupDropZones();
   teamCapacityEl.classList.add('active');
-  loadState().then(function() { render(); });
+  Promise.all([loadState(), loadConfig()]).then(function() { render(); });
 })();
 </script>
 </body>

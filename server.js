@@ -6,6 +6,22 @@ const PORT = 3000;
 const TASKS_FILE = path.join(__dirname, 'tasks.csv');
 const INDEX_FILE = path.join(__dirname, 'index.html');
 const REPLAN_FILE = path.join(__dirname, 'replan.js');
+const CONFIG_FILE = path.join(__dirname, 'server.conf');
+
+// --- Config (visible fields + order) ---
+
+function readConfig() {
+  try {
+    const data = fs.readFileSync(CONFIG_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (e) {
+    return { visibleFields: [] };
+  }
+}
+
+function writeConfig(config) {
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2) + '\n');
+}
 
 // --- CSV Parser (RFC 4180 compliant) ---
 
@@ -180,8 +196,13 @@ function buildColIndices(headers) {
     description: findColIndex(headers, 'Description'),
     originalEstimate: findColIndex(headers, 'Original Estimate'),
     depends: findColIndex(headers, 'Inward issue link (Depends)'),
+    finishToStart: findColIndex(headers, 'Inward issue link (Finish to Start)'),
     sprint: headers.indexOf('Sprint'),
   };
+}
+
+function parseDepsField(raw) {
+  return raw.trim() ? raw.split(/\s*;\s*/).map(s => s.trim()).filter(Boolean) : [];
 }
 
 function csvRowToIssue(row) {
@@ -190,9 +211,10 @@ function csvRowToIssue(row) {
 
   const issueId = parseInt(getCell(row, colIndices.issueId), 10);
 
-  // Parse depends link as array of issue keys
-  const dependsRaw = getCell(row, colIndices.depends).trim();
-  const dependsOn = dependsRaw ? dependsRaw.split(/\s*,\s*/).map(s => s.trim()).filter(Boolean) : [];
+  // Parse both inward issue link columns as dependencies (semicolon-separated issue IDs)
+  const deps1 = parseDepsField(getCell(row, colIndices.depends));
+  const deps2 = parseDepsField(getCell(row, colIndices.finishToStart));
+  const dependsOn = [...new Set([...deps1, ...deps2])];
 
   return {
     id: issueId,
@@ -205,11 +227,14 @@ function csvRowToIssue(row) {
     estimateHours: estimateHours,
     dependsOn: dependsOn,
     sprint: 1,
+    rawRow: [...row],
   };
 }
 
 function issueToCSVRow(issue, existingRow) {
-  const row = existingRow ? [...existingRow] : new Array(csvHeaders.length).fill('');
+  const row = issue.rawRow ? [...issue.rawRow]
+    : existingRow ? [...existingRow]
+    : new Array(csvHeaders.length).fill('');
   setCell(row, colIndices.summary, issue.title);
   setCell(row, colIndices.issueKey, issue.key);
   setCell(row, colIndices.issueId, issue.id);
@@ -218,9 +243,12 @@ function issueToCSVRow(issue, existingRow) {
   setCell(row, colIndices.assignee, issue.assignee || '');
   setCell(row, colIndices.description, issue.description || '');
   setCell(row, colIndices.originalEstimate, issue.estimateHours ? Math.round(issue.estimateHours * 3600) : '');
+  const depsStr = Array.isArray(issue.dependsOn) ? issue.dependsOn.join('; ') : '';
   if (colIndices.depends >= 0) {
-    const deps = Array.isArray(issue.dependsOn) ? issue.dependsOn.join(', ') : '';
-    setCell(row, colIndices.depends, deps);
+    setCell(row, colIndices.depends, depsStr);
+  }
+  if (colIndices.finishToStart >= 0) {
+    setCell(row, colIndices.finishToStart, depsStr);
   }
   return row;
 }
@@ -260,6 +288,7 @@ function readTasks() {
       sprintStart: '2026-02-15',
       teamCapacity: {},
       issues: issues,
+      csvHeaders: csvHeaders,
     };
   } catch (e) {
     return { nextId: 1, projectKey: 'SB', sprintStart: '2026-02-15', teamCapacity: {}, issues: [] };
@@ -273,7 +302,8 @@ function writeTasks(state) {
       'Project name', 'Project type', 'Project lead', 'Project description', 'Project url',
       'Priority', 'Resolution', 'Assignee', 'Reporter', 'Creator', 'Created', 'Updated',
       'Last Viewed', 'Resolved', 'Affects Version/s', 'Fix Version/s', 'Component/s',
-      'Due Date', 'Votes', 'Description'];
+      'Due Date', 'Votes', 'Description',
+      'Inward issue link (Depends)', 'Inward issue link (Finish to Start)'];
     buildColIndices(csvHeaders);
     csvDataRows = [];
   }
@@ -285,15 +315,11 @@ function writeTasks(state) {
     if (!isNaN(id)) existingById[id] = row;
   });
 
-  // Build id-to-key map for dependency serialization
-  const idToKey = {};
-  state.issues.forEach(i => { idToKey[i.id] = i.key; });
-
-  // Convert dependsOn from ids back to issue keys for CSV storage
+  // Keep dependsOn as issue IDs for CSV storage (semicolon-separated)
   const issuesForCSV = state.issues.map(i => ({
     ...i,
     dependsOn: (Array.isArray(i.dependsOn) ? i.dependsOn : [])
-      .map(depId => idToKey[depId] || String(depId)),
+      .map(depId => String(depId)),
   }));
 
   // Update existing rows and collect new ones
@@ -373,6 +399,30 @@ const server = http.createServer((req, res) => {
       try {
         const state = JSON.parse(body);
         writeTasks(state);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'GET' && req.url === '/api/config') {
+    const config = readConfig();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(config));
+    return;
+  }
+
+  if (req.method === 'PUT' && req.url === '/api/config') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const config = JSON.parse(body);
+        writeConfig(config);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       } catch (e) {
