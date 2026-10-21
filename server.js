@@ -1,13 +1,87 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('node:crypto');
 
-const PORT = 3000;
-const TASKS_FILE = path.join(__dirname, 'tasks.csv');
+const PORT = Number(process.env.PORT || 3000);
+const HOST = process.env.TINYJIRA_HOST || '127.0.0.1';
+const DATA_DIR = process.env.TINYJIRA_DATA_DIR || __dirname;
+const TASKS_FILE = path.join(DATA_DIR, 'tasks.csv');
 const INDEX_FILE = path.join(__dirname, 'index.html');
 const REPLAN_FILE = path.join(__dirname, 'replan.js');
-const CONFIG_FILE = path.join(__dirname, 'server.conf');
-const TEAM_FILE = path.join(__dirname, 'team.conf');
+const CONFIG_FILE = path.join(DATA_DIR, 'server.conf');
+const TEAM_FILE = path.join(DATA_DIR, 'team.conf');
+const MAX_BODY_BYTES = 1024 * 1024;
+
+function authorize(req) {
+  const expected = process.env.TINYJIRA_TOKEN;
+  if (!expected || expected.length < 32) return 503;
+  const header = req.headers.authorization || '';
+  let token = '';
+  if (header.startsWith('Bearer ')) token = header.slice(7);
+  if (header.startsWith('Basic ')) {
+    const decoded = Buffer.from(header.slice(6), 'base64').toString('utf8');
+    if (decoded.startsWith('admin:')) token = decoded.slice(6);
+  }
+  const actual = Buffer.from(token);
+  const wanted = Buffer.from(expected);
+  return actual.length === wanted.length && crypto.timingSafeEqual(actual, wanted) ? 200 : 401;
+}
+
+function allowedRequestOrigin(req) {
+  const host = req.headers.host || '';
+  let hostname;
+  try {
+    const url = new URL(`http://${host}`);
+    if (url.host !== host || url.username || url.password) return false;
+    hostname = url.hostname;
+  } catch { return false; }
+  const allowed = new Set(['localhost', '127.0.0.1', '[::1]', ...(process.env.TINYJIRA_ALLOWED_HOSTS || '').split(',').map(v => v.trim()).filter(Boolean)]);
+  if (!allowed.has(hostname)) return false;
+  return !req.headers.origin || req.headers.origin === (process.env.TINYJIRA_ORIGIN || `http://${host}`);
+}
+
+function safeJSON(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const inspect = (item, depth = 0) => {
+    if (depth > 30) return false;
+    if (typeof item === 'number' && !Number.isFinite(item)) return false;
+    if (!item || typeof item !== 'object') return true;
+    return Object.entries(item).every(([key, child]) => !['__proto__', 'constructor', 'prototype'].includes(key) && inspect(child, depth + 1));
+  };
+  return inspect(value);
+}
+
+function readJSON(req, res, callback) {
+  let size = 0;
+  let rejected = false;
+  const chunks = [];
+  req.on('data', chunk => {
+    if (rejected) return;
+    size += Buffer.byteLength(chunk);
+    if (size > MAX_BODY_BYTES) {
+      rejected = true;
+      res.writeHead(413, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Request too large' }));
+      return;
+    }
+    chunks.push(Buffer.from(chunk));
+  });
+  req.on('end', () => {
+    if (rejected) return;
+    try {
+      const value = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      if (!safeJSON(value)) throw new Error('Invalid object');
+      callback(value);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    } catch {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid JSON or state' }));
+    }
+  });
+  req.on('error', () => { if (!res.writableEnded) res.end(); });
+}
 
 // --- Config (visible fields + order) ---
 
@@ -375,6 +449,17 @@ function writeTasks(state) {
 // --- HTTP Server ---
 
 const server = http.createServer((req, res) => {
+  if (!allowedRequestOrigin(req)) {
+    res.writeHead(403); res.end('Origin or host rejected'); return;
+  }
+  const access = authorize(req);
+  if (access !== 200) {
+    res.writeHead(access, { 'WWW-Authenticate': 'Basic realm="TinyJira", charset="UTF-8"' });
+    res.end(access === 503 ? 'Configure TINYJIRA_TOKEN (32+ characters)' : 'Authentication required');
+    return;
+  }
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
   if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
     fs.readFile(INDEX_FILE, (err, data) => {
       if (err) {
@@ -409,18 +494,9 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.method === 'PUT' && req.url === '/api/tasks') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
-      try {
-        const state = JSON.parse(body);
-        writeTasks(state);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true }));
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Invalid JSON' }));
-      }
+    readJSON(req, res, state => {
+      if (!Array.isArray(state.issues) || state.issues.length > 10000) throw new Error('Invalid issues');
+      writeTasks(state);
     });
     return;
   }
@@ -433,19 +509,7 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.method === 'PUT' && req.url === '/api/config') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
-      try {
-        const config = JSON.parse(body);
-        writeConfig(config);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true }));
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Invalid JSON' }));
-      }
-    });
+    readJSON(req, res, writeConfig);
     return;
   }
 
@@ -457,19 +521,7 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.method === 'PUT' && req.url === '/api/team') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
-      try {
-        const team = JSON.parse(body);
-        writeTeamConfig(team);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true }));
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Invalid JSON' }));
-      }
-    });
+    readJSON(req, res, writeTeamConfig);
     return;
   }
 
@@ -509,8 +561,16 @@ function initTeamConfig() {
   writeTeamConfig(teamConfig);
 }
 
-initTeamConfig();
-
-server.listen(PORT, () => {
-  console.log(`Sprint Board server running at http://localhost:${PORT}`);
-});
+server.requestTimeout = 10_000;
+server.headersTimeout = 10_000;
+server.maxHeadersCount = 32;
+if (require.main === module) {
+  if (!process.env.TINYJIRA_TOKEN || process.env.TINYJIRA_TOKEN.length < 32) {
+    console.error('Configure TINYJIRA_TOKEN (32+ characters) before starting');
+    process.exitCode = 1;
+  } else {
+    initTeamConfig();
+    server.listen(PORT, HOST, () => console.log(`Sprint Board server listening on ${HOST}:${PORT}`));
+  }
+}
+module.exports = { server };

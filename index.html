@@ -1499,11 +1499,11 @@ body {
       var el = document.createElement('div');
       el.className = 'member-capacity';
       el.innerHTML =
-        '<span class="avatar">' + initials + '</span>' +
+        '<span class="avatar">' + escapeHtml(initials) + '</span>' +
         '<span class="member-name">' + escapeHtml(name) + '</span>' +
         '<div class="capacity-bar"><div class="capacity-fill ' + fillClass + '" style="width:' + pct + '%"></div></div>' +
-        '<span class="capacity-text">' + hrs + 'h /</span>' +
-        '<input type="number" class="capacity-avail" value="' + avail + '" min="0" step="1" title="Available hours for ' + escapeHtml(name) + '">' +
+        '<span class="capacity-text">' + escapeHtml(hrs) + 'h /</span>' +
+        '<input type="number" class="capacity-avail" value="' + escapeHtml(avail) + '" min="0" step="1" title="Available hours for ' + escapeHtml(name) + '">' +
         '<span class="capacity-text">h</span>';
 
       var input = el.querySelector('.capacity-avail');
@@ -1563,7 +1563,7 @@ body {
       header.className = 'sprint-section-header';
 
       var headerLeft = document.createElement('div');
-      headerLeft.innerHTML = '<h3 style="display:inline">Sprint ' + sprintNum + '</h3>' +
+      headerLeft.innerHTML = '<h3 style="display:inline">Sprint ' + escapeHtml(sprintNum) + '</h3>' +
         '<span class="sprint-dates">' + formatDateRange(sprintNum) + '</span>';
 
       // Capacity inputs per member for this sprint
@@ -1732,10 +1732,10 @@ body {
     if (hasMeta) {
       metaHtml = '<div class="card-meta">';
       if (issue.estimateHours && issue.estimateHours > 0) {
-        metaHtml += '<span class="badge badge-estimate">' + issue.estimateHours + 'h</span>';
+        metaHtml += '<span class="badge badge-estimate">' + escapeHtml(issue.estimateHours) + 'h</span>';
       }
       if (depIssues.length > 0) {
-        metaHtml += '<span class="badge badge-dep">blocked by ' + depIssues.map(function(d) { return d.key; }).join(', ') + '</span>';
+        metaHtml += '<span class="badge badge-dep">blocked by ' + depIssues.map(function(d) { return escapeHtml(d.key); }).join(', ') + '</span>';
       }
       if (showStatus) {
         var statusLabel = issue.status === 'inprogress' ? 'In Progress' : issue.status === 'todo' ? 'To Do' : 'Done';
@@ -1756,14 +1756,14 @@ body {
     }
 
     card.innerHTML =
-      '<div class="card-key">' + issue.key + '</div>' +
+      '<div class="card-key">' + escapeHtml(issue.key) + '</div>' +
       '<div class="card-title">' + escapeHtml(issue.title) + '</div>' +
       depsHintHtml +
       metaHtml +
       '<div class="card-footer">' +
-        '<span class="card-priority ' + issue.priority + '">' + issue.priority + '</span>' +
+        '<span class="card-priority ' + escapeHtml(issue.priority) + '">' + escapeHtml(issue.priority) + '</span>' +
         (issue.assignee
-          ? '<span class="card-assignee"><span class="avatar">' + initials + '</span>' + escapeHtml(issue.assignee) + '</span>'
+          ? '<span class="card-assignee"><span class="avatar">' + escapeHtml(initials) + '</span>' + escapeHtml(issue.assignee) + '</span>'
           : '') +
       '</div>';
 
@@ -2629,9 +2629,9 @@ body {
 
   // --- Helpers ---
   function escapeHtml(str) {
-    var div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    return String(str == null ? '' : str).replace(/[&<>"']/g, function(ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
   }
 
   // --- Dependency arrow drawing ---
